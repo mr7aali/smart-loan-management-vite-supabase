@@ -1,0 +1,214 @@
+import { useState } from 'react';
+import { Loan, Repayment } from '../types';
+import { X, DollarSign, Calendar, CreditCard } from 'lucide-react';
+import { formatCurrency, getBorrowerById } from '../utils';
+
+interface AddRepaymentModalProps {
+  loans: Loan[];
+  onClose: () => void;
+  onAdd: (repayment: Omit<Repayment, 'id' | 'createdAt'>) => void;
+}
+
+export default function AddRepaymentModal({ loans, onClose, onAdd }: AddRepaymentModalProps) {
+  const [formData, setFormData] = useState({
+    loanId: '',
+    amount: '',
+    date: new Date().toISOString().split('T')[0],
+    method: 'cash' as 'cash' | 'bank_transfer' | 'upi' | 'other',
+    notes: '',
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const selectedLoan = loans.find(l => l.id === formData.loanId);
+
+  const validate = () => {
+    const newErrors: Record<string, string> = {};
+    if (!formData.loanId) newErrors.loanId = 'Please select a loan';
+    if (!formData.amount || parseFloat(formData.amount) <= 0) {
+      newErrors.amount = 'Please enter a valid amount';
+    }
+    if (!formData.date) newErrors.date = 'Please select a date';
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (validate()) {
+      onAdd({
+        loanId: formData.loanId,
+        amount: parseFloat(formData.amount),
+        date: formData.date,
+        method: formData.method,
+        notes: formData.notes || undefined,
+      });
+    }
+  };
+
+  const handleChange = (field: string, value: string) => {
+    setFormData({ ...formData, [field]: value });
+    if (errors[field]) {
+      setErrors({ ...errors, [field]: '' });
+    }
+  };
+
+  const methods = [
+    { value: 'cash', label: 'Cash', icon: '$' },
+    { value: 'bank_transfer', label: 'Bank Transfer', icon: '🏦' },
+    { value: 'upi', label: 'UPI', icon: '📱' },
+    { value: 'other', label: 'Other', icon: '📋' },
+  ];
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center">
+              <DollarSign className="w-5 h-5 text-white" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-800">Record Payment</h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <X className="w-5 h-5 text-gray-500" />
+          </button>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {/* Loan Selection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Select Loan <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={formData.loanId}
+              onChange={(e) => handleChange('loanId', e.target.value)}
+              className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors ${
+                errors.loanId ? 'border-red-500' : 'border-gray-200'
+              }`}
+            >
+              <option value="">Select an active loan</option>
+              {loans.map((loan) => {
+                const borrower = getBorrowerById([], loan.borrowerId);
+                return (
+                  <option key={loan.id} value={loan.id}>
+                    {borrower?.name || 'Unknown'} - {formatCurrency(loan.amount)} (Due: {new Date(loan.dueDate).toLocaleDateString()})
+                  </option>
+                );
+              })}
+            </select>
+            {errors.loanId && <p className="text-red-500 text-sm mt-1">{errors.loanId}</p>}
+          </div>
+
+          {/* Selected Loan Info */}
+          {selectedLoan && (
+            <div className="p-4 bg-gray-50 rounded-xl">
+              <p className="text-sm text-gray-500 mb-1">Loan Amount</p>
+              <p className="text-xl font-bold text-gray-800">{formatCurrency(selectedLoan.amount)}</p>
+              <p className="text-sm text-gray-500 mt-2">Due Date: {new Date(selectedLoan.dueDate).toLocaleDateString()}</p>
+            </div>
+          )}
+
+          {/* Amount */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Payment Amount <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="number"
+                value={formData.amount}
+                onChange={(e) => handleChange('amount', e.target.value)}
+                placeholder="0.00"
+                min="0"
+                step="0.01"
+                className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors ${
+                  errors.amount ? 'border-red-500' : 'border-gray-200'
+                }`}
+              />
+            </div>
+            {errors.amount && <p className="text-red-500 text-sm mt-1">{errors.amount}</p>}
+          </div>
+
+          {/* Date */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Payment Date <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="date"
+                value={formData.date}
+                onChange={(e) => handleChange('date', e.target.value)}
+                className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors ${
+                  errors.date ? 'border-red-500' : 'border-gray-200'
+                }`}
+              />
+            </div>
+            {errors.date && <p className="text-red-500 text-sm mt-1">{errors.date}</p>}
+          </div>
+
+          {/* Payment Method */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Payment Method
+            </label>
+            <div className="grid grid-cols-4 gap-2">
+              {methods.map((method) => (
+                <button
+                  key={method.value}
+                  type="button"
+                  onClick={() => handleChange('method', method.value)}
+                  className={`p-3 border rounded-lg text-center transition-colors ${
+                    formData.method === method.value
+                      ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                      : 'border-gray-200 hover:bg-gray-50'
+                  }`}
+                >
+                  <span className="text-xl">{method.icon}</span>
+                  <p className="text-xs mt-1">{method.label}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+            <textarea
+              value={formData.notes}
+              onChange={(e) => handleChange('notes', e.target.value)}
+              placeholder="Any additional notes about this payment..."
+              rows={2}
+              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors resize-none"
+            />
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-2 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium"
+            >
+              Record Payment
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}

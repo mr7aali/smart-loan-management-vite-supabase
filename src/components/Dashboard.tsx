@@ -1,0 +1,531 @@
+import { Borrower, Loan, Repayment } from '../types';
+import {
+  formatCurrency,
+  formatDate,
+  getLoanProgress,
+  getRemainingAmount,
+  getBorrowerById,
+  getBorrowerName,
+} from '../utils';
+import {
+  Users,
+  DollarSign,
+  FileText,
+  TrendingUp,
+  AlertTriangle,
+  CheckCircle,
+  ArrowUpRight,
+  ArrowDownRight,
+} from 'lucide-react';
+import { useEffect, useState } from 'react';
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  BarChart,
+  Bar,
+  Legend,
+} from 'recharts';
+
+interface DashboardProps {
+  borrowers: Borrower[];
+  loans: Loan[];
+  repayments: Repayment[];
+}
+
+const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444'];
+
+export default function Dashboard({ borrowers, loans, repayments }: DashboardProps) {
+  const [animateCards, setAnimateCards] = useState(false);
+
+  useEffect(() => {
+    setAnimateCards(true);
+  }, []);
+
+  // Helper functions to handle both snake_case and camelCase
+  const getLoanBorrowerId = (loan: Loan): string => loan.borrowerId || loan.borrower_id || '';
+  const getLoanDueDate = (loan: Loan): string => loan.dueDate || loan.due_date || '';
+  const getLoanStartDate = (loan: Loan): string => loan.startDate || loan.start_date || '';
+  const getLoanAmount = (loan: Loan): number => loan.amount || 0;
+  const getRepaymentLoanId = (r: Repayment): string => r.loanId || r.loan_id || '';
+
+  const totalDisbursed = loans.reduce((sum, l) => sum + getLoanAmount(l), 0);
+  const totalCollected = repayments.reduce((sum, r) => sum + r.amount, 0);
+  const activeLoans = loans.filter(l => l.status === 'active');
+  const overdueLoans = loans.filter(l => {
+    if (l.status !== 'active') return false;
+    const dueDate = new Date(getLoanDueDate(l));
+    return dueDate < new Date();
+  });
+  const totalOutstanding = activeLoans.reduce((sum, l) => {
+    const paid = repayments
+      .filter(r => getRepaymentLoanId(r) === l.id)
+      .reduce((s, r) => s + r.amount, 0);
+    return sum + (getLoanAmount(l) - paid);
+  }, 0);
+
+  const stats = [
+    {
+      title: 'Total Borrowers',
+      value: borrowers.length,
+      change: '+12%',
+      changeType: 'positive' as const,
+      icon: Users,
+      color: 'from-blue-500 to-blue-600',
+    },
+    {
+      title: 'Active Loans',
+      value: activeLoans.length,
+      change: '+8%',
+      changeType: 'positive' as const,
+      icon: FileText,
+      color: 'from-emerald-500 to-emerald-600',
+    },
+    {
+      title: 'Total Disbursed',
+      value: formatCurrency(totalDisbursed),
+      change: '+15%',
+      changeType: 'positive' as const,
+      icon: DollarSign,
+      color: 'from-purple-500 to-purple-600',
+    },
+    {
+      title: 'Collection Rate',
+      value: totalDisbursed > 0 ? `${((totalCollected / totalDisbursed) * 100).toFixed(1)}%` : '0%',
+      change: '-2%',
+      changeType: 'negative' as const,
+      icon: TrendingUp,
+      color: 'from-amber-500 to-amber-600',
+    },
+  ];
+
+  const recentLoans = [...loans]
+    .sort((a, b) => {
+      const dateA = new Date(a.created_at || a.createdAt || 0).getTime();
+      const dateB = new Date(b.created_at || b.createdAt || 0).getTime();
+      return dateB - dateA;
+    })
+    .slice(0, 5);
+
+  const upcomingPayments = activeLoans
+    .filter(l => {
+      const dueDate = new Date(getLoanDueDate(l));
+      const today = new Date();
+      const sevenDaysLater = new Date(today);
+      sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
+      return dueDate >= today && dueDate <= sevenDaysLater;
+    })
+    .slice(0, 5);
+
+  // Calculate avg interest rate
+  const avgInterestRate = loans.length > 0
+    ? loans.reduce((sum, l) => sum + (l.interestRate || l.interest_rate || 0), 0) / loans.length
+    : 0;
+
+  // Calculate this month's repayments
+  const thisMonthRepayments = repayments
+    .filter(r => {
+      const date = new Date(r.date);
+      const now = new Date();
+      return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+    })
+    .reduce((sum, r) => sum + r.amount, 0);
+
+  // Generate monthly data for charts (last 6 months)
+  const generateMonthlyData = () => {
+    const months = [];
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthName = date.toLocaleDateString('en-US', { month: 'short' });
+      const year = date.getFullYear();
+
+      const monthRepayments = repayments
+        .filter(r => {
+          const rDate = new Date(r.date);
+          return rDate.getMonth() === date.getMonth() && rDate.getFullYear() === year;
+        })
+        .reduce((sum, r) => sum + r.amount, 0);
+
+      const monthLoans = loans
+        .filter(l => {
+          const lDate = new Date(getLoanStartDate(l));
+          return lDate.getMonth() === date.getMonth() && lDate.getFullYear() === year;
+        })
+        .reduce((sum, l) => sum + getLoanAmount(l), 0);
+
+      months.push({
+        name: monthName,
+        disbursed: monthLoans,
+        collected: monthRepayments,
+      });
+    }
+    return months;
+  };
+
+  const monthlyData = generateMonthlyData();
+
+  // Loan status distribution for pie chart
+  const loanStatusData = [
+    { name: 'Paid', value: loans.filter(l => l.status === 'paid').length },
+    { name: 'Active', value: loans.filter(l => l.status === 'active').length },
+    { name: 'Overdue', value: overdueLoans.length },
+  ].filter(d => d.value > 0);
+
+  // Top borrowers by loan amount
+  const topBorrowers = borrowers
+    .map(b => {
+      const borrowerLoans = loans.filter(l => getLoanBorrowerId(l) === b.id);
+      const totalLoan = borrowerLoans.reduce((sum, l) => sum + getLoanAmount(l), 0);
+      return {
+        name: b.name,
+        total: totalLoan,
+      };
+    })
+    .filter(b => b.total > 0)
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 5);
+
+  return (
+    <div className="space-y-6">
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {stats.map((stat, index) => {
+          const Icon = stat.icon;
+          return (
+            <div
+              key={stat.title}
+              className={`bg-white rounded-xl shadow-sm border border-gray-100 p-6 transition-all duration-500 ${
+                animateCards ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+              }`}
+              style={{ transitionDelay: `${index * 100}ms` }}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center`}>
+                  <Icon className="w-6 h-6 text-white" />
+                </div>
+                <div className={`flex items-center gap-1 text-sm font-medium ${
+                  stat.changeType === 'positive' ? 'text-emerald-600' : 'text-red-500'
+                }`}>
+                  {stat.changeType === 'positive' ? (
+                    <ArrowUpRight className="w-4 h-4" />
+                  ) : (
+                    <ArrowDownRight className="w-4 h-4" />
+                  )}
+                  {stat.change}
+                </div>
+              </div>
+              <h3 className="text-2xl font-bold text-gray-800">{stat.value}</h3>
+              <p className="text-gray-500 text-sm">{stat.title}</p>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Portfolio Overview */}
+        <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold text-gray-800">Portfolio Overview</h2>
+            <select className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              <option>Last 30 days</option>
+              <option>Last 90 days</option>
+              <option>This year</option>
+              <option>All time</option>
+            </select>
+          </div>
+
+          <div className="grid grid-cols-3 gap-6 mb-6">
+            <div className="p-4 bg-gray-50 rounded-xl">
+              <p className="text-sm text-gray-500 mb-1">Total Disbursed</p>
+              <p className="text-2xl font-bold text-gray-800">{formatCurrency(totalDisbursed)}</p>
+            </div>
+            <div className="p-4 bg-gray-50 rounded-xl">
+              <p className="text-sm text-gray-500 mb-1">Total Collected</p>
+              <p className="text-2xl font-bold text-emerald-600">{formatCurrency(totalCollected)}</p>
+            </div>
+            <div className="p-4 bg-gray-50 rounded-xl">
+              <p className="text-sm text-gray-500 mb-1">Outstanding</p>
+              <p className="text-2xl font-bold text-amber-600">{formatCurrency(totalOutstanding)}</p>
+            </div>
+          </div>
+
+          {/* Progress Bar */}
+          <div className="mb-6">
+            <div className="flex justify-between text-sm mb-2">
+              <span className="text-gray-600">Collection Progress</span>
+              <span className="font-medium text-gray-800">
+                {totalDisbursed > 0 ? ((totalCollected / totalDisbursed) * 100).toFixed(1) : 0}%
+              </span>
+            </div>
+            <div className="h-4 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-1000"
+                style={{ width: `${totalDisbursed > 0 ? (totalCollected / totalDisbursed) * 100 : 0}%` }}
+              ></div>
+            </div>
+          </div>
+
+          {/* Loan Status Breakdown */}
+          <div className="flex gap-4">
+            <div className="flex-1 p-4 bg-emerald-50 rounded-xl border border-emerald-100">
+              <div className="flex items-center gap-2 mb-2">
+                <CheckCircle className="w-5 h-5 text-emerald-600" />
+                <span className="font-medium text-emerald-800">Paid Loans</span>
+              </div>
+              <p className="text-2xl font-bold text-emerald-600">
+                {loans.filter(l => l.status === 'paid').length}
+              </p>
+            </div>
+            <div className="flex-1 p-4 bg-indigo-50 rounded-xl border border-indigo-100">
+              <div className="flex items-center gap-2 mb-2">
+                <FileText className="w-5 h-5 text-indigo-600" />
+                <span className="font-medium text-indigo-800">Active Loans</span>
+              </div>
+              <p className="text-2xl font-bold text-indigo-600">{activeLoans.length}</p>
+            </div>
+            <div className="flex-1 p-4 bg-red-50 rounded-xl border border-red-100">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertTriangle className="w-5 h-5 text-red-600" />
+                <span className="font-medium text-red-800">Overdue</span>
+              </div>
+              <p className="text-2xl font-bold text-red-600">{overdueLoans.length}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Stats */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <h2 className="text-xl font-bold text-gray-800 mb-6">Quick Stats</h2>
+
+          <div className="space-y-4">
+            <div className="flex justify-between items-center p-4 bg-gray-50 rounded-xl">
+              <span className="text-gray-600">Avg. Loan Amount</span>
+              <span className="font-bold text-gray-800">
+                {loans.length > 0 ? formatCurrency(totalDisbursed / loans.length) : '$0'}
+              </span>
+            </div>
+            <div className="flex justify-between items-center p-4 bg-gray-50 rounded-xl">
+              <span className="text-gray-600">Avg. Interest Rate</span>
+              <span className="font-bold text-gray-800">
+                {avgInterestRate.toFixed(1)}%
+              </span>
+            </div>
+            <div className="flex justify-between items-center p-4 bg-gray-50 rounded-xl">
+              <span className="text-gray-600">This Month Repayments</span>
+              <span className="font-bold text-emerald-600">
+                {formatCurrency(thisMonthRepayments)}
+              </span>
+            </div>
+            <div className="flex justify-between items-center p-4 bg-gray-50 rounded-xl">
+              <span className="text-gray-600">Interest Earned</span>
+              <span className="font-bold text-purple-600">
+                {formatCurrency(totalCollected - totalDisbursed)}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Loan & Collection Trend */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <h2 className="text-xl font-bold text-gray-800 mb-6">Loan & Collection Trend</h2>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={monthlyData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="name" stroke="#9ca3af" fontSize={12} />
+                <YAxis stroke="#9ca3af" fontSize={12} tickFormatter={(value) => `$${value / 1000}k`} />
+                <Tooltip
+                  formatter={(value: number) => [formatCurrency(value), '']}
+                  contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb' }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="disbursed"
+                  stroke="#6366f1"
+                  fill="#6366f1"
+                  fillOpacity={0.1}
+                  strokeWidth={2}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="collected"
+                  stroke="#10b981"
+                  fill="#10b981"
+                  fillOpacity={0.1}
+                  strokeWidth={2}
+                />
+                <Legend />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Loan Status Distribution */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <h2 className="text-xl font-bold text-gray-800 mb-6">Loan Status Distribution</h2>
+          {loanStatusData.length > 0 ? (
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={loanStatusData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  >
+                    {loanStatusData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="h-64 flex items-center justify-center text-gray-500">
+              <p>No loan data available</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Top Borrowers Chart */}
+      {topBorrowers.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <h2 className="text-xl font-bold text-gray-800 mb-6">Top Borrowers by Loan Amount</h2>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={topBorrowers} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis type="number" stroke="#9ca3af" fontSize={12} tickFormatter={(value) => `$${value / 1000}k`} />
+                <YAxis type="category" dataKey="name" stroke="#9ca3af" fontSize={12} width={100} />
+                <Tooltip formatter={(value: number) => [formatCurrency(value), 'Total Loans']} />
+                <Bar dataKey="total" fill="#6366f1" radius={[0, 8, 8, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+      {/* Recent Activity & Upcoming */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Recent Loans */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold text-gray-800">Recent Loans</h2>
+            <button className="text-indigo-600 hover:text-indigo-700 font-medium text-sm">View All</button>
+          </div>
+
+          {recentLoans.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p>No loans yet</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {recentLoans.map(loan => {
+                const borrowerId = getLoanBorrowerId(loan);
+                const borrower = getBorrowerById(borrowers, borrowerId);
+                const borrowerName = loan.borrowers ? getBorrowerName(loan.borrowers) : borrower?.name || 'Unknown';
+                const progress = getLoanProgress(loan, repayments);
+                const startDate = getLoanStartDate(loan);
+
+                return (
+                  <div key={loan.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
+                        {borrowerName.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-800">{borrowerName}</p>
+                        <p className="text-sm text-gray-500">{formatDate(startDate)}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-gray-800">{formatCurrency(getLoanAmount(loan))}</p>
+                      <div className="flex items-center gap-2">
+                        <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${
+                              loan.status === 'paid' ? 'bg-emerald-500' : loan.status === 'overdue' ? 'bg-red-500' : 'bg-indigo-500'
+                            }`}
+                            style={{ width: `${progress}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-xs text-gray-500">{progress.toFixed(0)}%</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Upcoming Payments */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold text-gray-800">Upcoming Payments</h2>
+            <span className="text-sm text-gray-500">Next 7 days</span>
+          </div>
+
+          {upcomingPayments.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              <DollarSign className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p>No upcoming payments</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {upcomingPayments.map(loan => {
+                const borrowerId = getLoanBorrowerId(loan);
+                const borrower = getBorrowerById(borrowers, borrowerId);
+                const borrowerName = loan.borrowers ? getBorrowerName(loan.borrowers) : borrower?.name || 'Unknown';
+                const remaining = getRemainingAmount(loan, repayments);
+                const dueDate = getLoanDueDate(loan);
+                const daysUntilDue = Math.ceil((new Date(dueDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+
+                return (
+                  <div key={loan.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white font-bold text-sm">
+                        {borrowerName.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-800">{borrowerName}</p>
+                        <p className="text-sm text-gray-500">Due {formatDate(dueDate)}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-amber-600">{formatCurrency(remaining)}</p>
+                      <p className={`text-xs font-medium ${
+                        daysUntilDue <= 1 ? 'text-red-500' : daysUntilDue <= 3 ? 'text-amber-500' : 'text-gray-500'
+                      }`}>
+                        {daysUntilDue === 0 ? 'Today' : daysUntilDue === 1 ? 'Tomorrow' : `In ${daysUntilDue} days`}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
