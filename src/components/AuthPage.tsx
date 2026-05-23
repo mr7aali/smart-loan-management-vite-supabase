@@ -17,8 +17,8 @@ export default function AuthPage({ onSignIn, onSignUp }: AuthPageProps) {
     confirmPassword: "",
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
     setError("");
     setLoading(true);
 
@@ -53,7 +53,6 @@ export default function AuthPage({ onSignIn, onSignUp }: AuthPageProps) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-indigo-900 via-purple-900 to-indigo-950 p-4">
       <div className="w-full max-w-md">
-        {/* Logo & Branding */}
         <div className="mb-8 text-center">
           <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg">
             <Bird className="h-10 w-10 text-white" />
@@ -64,7 +63,6 @@ export default function AuthPage({ onSignIn, onSignUp }: AuthPageProps) {
           </p>
         </div>
 
-        {/* Auth Card */}
         <div className="rounded-2xl bg-white p-8 shadow-2xl">
           <div className="mb-6 text-center">
             <h2 className="text-2xl font-bold text-gray-800">
@@ -128,7 +126,7 @@ export default function AuthPage({ onSignIn, onSignUp }: AuthPageProps) {
                   type="password"
                   value={formData.password}
                   onChange={(e) => handleChange("password", e.target.value)}
-                  placeholder="••••••••"
+                  placeholder="Enter your password"
                   required
                   className="w-full rounded-xl border border-gray-200 py-3 pl-10 pr-4 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
@@ -148,7 +146,7 @@ export default function AuthPage({ onSignIn, onSignUp }: AuthPageProps) {
                     onChange={(e) =>
                       handleChange("confirmPassword", e.target.value)
                     }
-                    placeholder="••••••••"
+                    placeholder="Confirm your password"
                     required
                     className="w-full rounded-xl border border-gray-200 py-3 pl-10 pr-4 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
@@ -186,16 +184,6 @@ export default function AuthPage({ onSignIn, onSignUp }: AuthPageProps) {
               </button>
             </p>
           </div>
-
-          {/* {isLogin && (
-            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
-              <p className="text-sm text-amber-800">
-                <strong>Demo Account:</strong><br />
-                Email: demo@lendsmart.com<br />
-                Password: demo123
-              </p>
-            </div>
-          )} */}
         </div>
 
         <p className="mt-6 text-center text-sm text-indigo-300">

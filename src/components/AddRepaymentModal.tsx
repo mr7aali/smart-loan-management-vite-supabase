@@ -1,15 +1,38 @@
 import { useState } from 'react';
-import { Loan, Repayment } from '../types';
-import { X, DollarSign, Calendar, CreditCard } from 'lucide-react';
-import { formatCurrency, getBorrowerById } from '../utils';
+import { Loan, Repayment, Borrower } from '../types';
+import {
+  X,
+  DollarSign,
+  Calendar,
+  Banknote,
+  Landmark,
+  Smartphone,
+  ReceiptText,
+} from 'lucide-react';
+import {
+  formatCurrency,
+  formatDate,
+  getBorrowerById,
+  getBorrowerName,
+  getLoanBorrowerId,
+  getLoanDueDate,
+} from '../utils';
 
 interface AddRepaymentModalProps {
   loans: Loan[];
+  borrowers: Borrower[];
   onClose: () => void;
   onAdd: (repayment: Omit<Repayment, 'id' | 'createdAt'>) => void;
 }
 
-export default function AddRepaymentModal({ loans, onClose, onAdd }: AddRepaymentModalProps) {
+const methods = [
+  { value: 'cash', label: 'Cash', icon: Banknote },
+  { value: 'bank_transfer', label: 'Bank Transfer', icon: Landmark },
+  { value: 'upi', label: 'UPI', icon: Smartphone },
+  { value: 'other', label: 'Other', icon: ReceiptText },
+] as const;
+
+export default function AddRepaymentModal({ loans, borrowers, onClose, onAdd }: AddRepaymentModalProps) {
   const [formData, setFormData] = useState({
     loanId: '',
     amount: '',
@@ -19,7 +42,7 @@ export default function AddRepaymentModal({ loans, onClose, onAdd }: AddRepaymen
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const selectedLoan = loans.find(l => l.id === formData.loanId);
+  const selectedLoan = loans.find((loan) => loan.id === formData.loanId);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -32,17 +55,17 @@ export default function AddRepaymentModal({ loans, onClose, onAdd }: AddRepaymen
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (validate()) {
-      onAdd({
-        loanId: formData.loanId,
-        amount: parseFloat(formData.amount),
-        date: formData.date,
-        method: formData.method,
-        notes: formData.notes || undefined,
-      });
-    }
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!validate()) return;
+
+    onAdd({
+      loanId: formData.loanId,
+      amount: parseFloat(formData.amount),
+      date: formData.date,
+      method: formData.method,
+      notes: formData.notes || undefined,
+    });
   };
 
   const handleChange = (field: string, value: string) => {
@@ -52,17 +75,9 @@ export default function AddRepaymentModal({ loans, onClose, onAdd }: AddRepaymen
     }
   };
 
-  const methods = [
-    { value: 'cash', label: 'Cash', icon: '$' },
-    { value: 'bank_transfer', label: 'Bank Transfer', icon: '🏦' },
-    { value: 'upi', label: 'UPI', icon: '📱' },
-    { value: 'other', label: 'Other', icon: '📋' },
-  ];
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-        {/* Header */}
         <div className="p-6 border-b border-gray-200 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center">
@@ -78,9 +93,7 @@ export default function AddRepaymentModal({ loans, onClose, onAdd }: AddRepaymen
           </button>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {/* Loan Selection */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Select Loan <span className="text-red-500">*</span>
@@ -94,10 +107,13 @@ export default function AddRepaymentModal({ loans, onClose, onAdd }: AddRepaymen
             >
               <option value="">Select an active loan</option>
               {loans.map((loan) => {
-                const borrower = getBorrowerById([], loan.borrowerId);
+                const borrower =
+                  loan.borrowers ||
+                  getBorrowerById(borrowers, getLoanBorrowerId(loan));
+
                 return (
                   <option key={loan.id} value={loan.id}>
-                    {borrower?.name || 'Unknown'} - {formatCurrency(loan.amount)} (Due: {new Date(loan.dueDate).toLocaleDateString()})
+                    {getBorrowerName(borrower)} - {formatCurrency(loan.amount)} (Due: {formatDate(getLoanDueDate(loan))})
                   </option>
                 );
               })}
@@ -105,16 +121,16 @@ export default function AddRepaymentModal({ loans, onClose, onAdd }: AddRepaymen
             {errors.loanId && <p className="text-red-500 text-sm mt-1">{errors.loanId}</p>}
           </div>
 
-          {/* Selected Loan Info */}
           {selectedLoan && (
             <div className="p-4 bg-gray-50 rounded-xl">
               <p className="text-sm text-gray-500 mb-1">Loan Amount</p>
               <p className="text-xl font-bold text-gray-800">{formatCurrency(selectedLoan.amount)}</p>
-              <p className="text-sm text-gray-500 mt-2">Due Date: {new Date(selectedLoan.dueDate).toLocaleDateString()}</p>
+              <p className="text-sm text-gray-500 mt-2">
+                Due Date: {formatDate(getLoanDueDate(selectedLoan))}
+              </p>
             </div>
           )}
 
-          {/* Amount */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Payment Amount <span className="text-red-500">*</span>
@@ -136,7 +152,6 @@ export default function AddRepaymentModal({ loans, onClose, onAdd }: AddRepaymen
             {errors.amount && <p className="text-red-500 text-sm mt-1">{errors.amount}</p>}
           </div>
 
-          {/* Date */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Payment Date <span className="text-red-500">*</span>
@@ -155,31 +170,33 @@ export default function AddRepaymentModal({ loans, onClose, onAdd }: AddRepaymen
             {errors.date && <p className="text-red-500 text-sm mt-1">{errors.date}</p>}
           </div>
 
-          {/* Payment Method */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Payment Method
             </label>
-            <div className="grid grid-cols-4 gap-2">
-              {methods.map((method) => (
-                <button
-                  key={method.value}
-                  type="button"
-                  onClick={() => handleChange('method', method.value)}
-                  className={`p-3 border rounded-lg text-center transition-colors ${
-                    formData.method === method.value
-                      ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-                      : 'border-gray-200 hover:bg-gray-50'
-                  }`}
-                >
-                  <span className="text-xl">{method.icon}</span>
-                  <p className="text-xs mt-1">{method.label}</p>
-                </button>
-              ))}
+            <div className="grid grid-cols-2 gap-2">
+              {methods.map((method) => {
+                const Icon = method.icon;
+
+                return (
+                  <button
+                    key={method.value}
+                    type="button"
+                    onClick={() => handleChange('method', method.value)}
+                    className={`p-3 border rounded-lg text-center transition-colors ${
+                      formData.method === method.value
+                        ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                        : 'border-gray-200 hover:bg-gray-50'
+                    }`}
+                  >
+                    <Icon className="w-5 h-5 mx-auto" />
+                    <p className="text-xs mt-1">{method.label}</p>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          {/* Notes */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
             <textarea
@@ -191,7 +208,6 @@ export default function AddRepaymentModal({ loans, onClose, onAdd }: AddRepaymen
             />
           </div>
 
-          {/* Actions */}
           <div className="flex gap-3 pt-4">
             <button
               type="button"

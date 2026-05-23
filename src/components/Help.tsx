@@ -50,90 +50,112 @@ export default function Help() {
 
   const faqs = [
     {
-      question: "How do I add a new borrower?",
-      answer: "Navigate to the Borrowers section from the sidebar. Click the 'Add Borrower' button in the top right corner. Fill in the borrower's name, email, phone number, and optional address. Click 'Save' to create the borrower record.",
+      question: 'How do I add a new borrower?',
+      answer: "Navigate to the Borrowers section from the sidebar. Click the 'Add Borrower' button in the top right corner. Fill in the borrower's name, email, phone number, and optional address. Click 'Add Borrower' to create the borrower record.",
     },
     {
-      question: "How do I record a new loan?",
-      answer: "Go to the Loans section and click 'Add Loan'. Select the borrower from the dropdown, enter the loan amount, interest rate, term in months, start date, and due date. The system will automatically calculate the total payable amount based on your inputs.",
+      question: 'How do I record a new loan?',
+      answer: "Go to the Loans section and click 'Create Loan'. Select the borrower from the dropdown, enter the loan amount, interest rate, term in months, and start date. The app calculates the due date, EMI, and total payable automatically.",
     },
     {
-      question: "How do I record repayments?",
-      answer: "In the Repayments section, click 'Add Repayment'. Select the active loan, enter the payment amount, date, and payment method (cash, bank transfer, UPI, or other). The loan status will automatically update based on the total repayments received.",
+      question: 'How do I record repayments?',
+      answer: "In the Repayments section, click 'Record Payment'. Select the active loan, enter the payment amount, date, and payment method (cash, bank transfer, UPI, or other). The loan status updates automatically based on the repayment total and due date.",
     },
     {
-      question: "How does the subscription system work?",
-      answer: "LendSmart offers 4 plans: Free (5 borrowers), Starter ($9/mo - 25 borrowers), Professional ($19/mo - unlimited), and Enterprise ($49/mo - team features). You can upgrade or downgrade anytime from the Subscription page.",
+      question: 'How does the subscription system work?',
+      answer: 'LendSmart offers 4 plans: Free, Starter ($19/mo), Professional ($49/mo), and Enterprise ($99/mo). You can upgrade or downgrade anytime from the Subscription page based on the borrower and team limits that fit your business.',
     },
     {
-      question: "Is my data secure?",
-      answer: "Yes! All your data is encrypted and stored securely in our database. We use Row Level Security (RLS) to ensure each user can only access their own data. Your financial information is never shared with third parties.",
+      question: 'Is my data secure?',
+      answer: 'Yes. All data is stored in Supabase with Row Level Security (RLS) policies, so each user can only access their own borrowers, loans, repayments, and subscription records.',
     },
     {
-      question: "Can I export my data?",
-      answer: "The Reports section allows you to generate comprehensive reports of your borrowers, loans, and repayments. You can view summary statistics and detailed breakdowns of your portfolio performance.",
+      question: 'Can I export my data?',
+      answer: 'Yes. The Reports section can export portfolio, collection, and borrower reports as CSV files so you can analyze or archive your data outside the app.',
     },
     {
-      question: "How do I update my account settings?",
-      answer: "Click on your profile name in the sidebar or navigate to Settings. Here you can update your profile information, change your password, manage email notifications, and view your subscription details.",
+      question: 'How do I update my account settings?',
+      answer: 'Open Settings from the sidebar footer to review your account details, current subscription, notification preferences, and sign-out controls.',
     },
     {
-      question: "What payment methods are supported?",
-      answer: "We currently support PayPal for payments. When upgrading to a paid plan, you'll be redirected to PayPal to complete your secure payment. Credit cards and other payment methods can be added through your PayPal account.",
+      question: 'What payment methods are supported?',
+      answer: 'Repayments can be recorded as cash, bank transfer, UPI, or other. Subscription upgrades use PayPal checkout when a business email is configured for the deployment.',
     },
   ];
 
   const guides = [
     {
       icon: Users,
-      title: "Getting Started Guide",
-      description: "Learn the basics of LendSmart",
-      link: "#",
+      id: 'getting-started',
+      title: 'Getting Started',
+      description: 'Set up your first borrower and loan',
     },
     {
       icon: CreditCard,
-      title: "Managing Loans",
-      description: "Best practices for loan management",
-      link: "#",
+      id: 'managing-loans',
+      title: 'Managing Loans',
+      description: 'Track balances, due dates, and status',
     },
     {
       icon: FileText,
-      title: "Reports & Analytics",
-      description: "Understanding your portfolio",
-      link: "#",
+      id: 'reports-analytics',
+      title: 'Reports & Analytics',
+      description: 'Understand collections and portfolio health',
     },
     {
       icon: Shield,
-      title: "Security Best Practices",
-      description: "Keep your data safe",
-      link: "#",
+      id: 'security-best-practices',
+      title: 'Security Best Practices',
+      description: 'Protect user access and business data',
     },
   ];
 
   const supportOptions = [
     {
       icon: Mail,
-      title: "Email Support",
-      description: "support@lendsmart.app",
-      link: "mailto:support@lendsmart.app",
+      title: 'Email Support',
+      description: 'support@lendsmart.app',
+      link: 'mailto:support@lendsmart.app',
     },
     {
       icon: MessageCircle,
-      title: "Live Chat",
-      description: "Available on Pro plans",
-      link: "#",
+      title: 'Live Chat',
+      description: 'Available on Professional and Enterprise plans',
+      link: 'mailto:support@lendsmart.app?subject=Live%20Chat%20Request',
     },
     {
       icon: Video,
-      title: "Video Tutorials",
-      description: "Step-by-step guides",
-      link: "#",
+      title: 'Video Tutorials',
+      description: 'Request a walkthrough from support',
+      link: 'mailto:support@lendsmart.app?subject=Video%20Tutorial%20Request',
+    },
+  ];
+
+  const guideDetails = [
+    {
+      id: 'getting-started',
+      title: 'Getting Started',
+      body: 'Create a borrower first, then issue a loan tied to that borrower. Once the loan exists, you can begin recording repayments and watch the dashboard update in real time.',
+    },
+    {
+      id: 'managing-loans',
+      title: 'Managing Loans',
+      body: 'Use the loan table to review amount, interest, term, due date, repayment progress, and live status. Overdue loans surface automatically when the due date passes and the loan is not fully paid.',
+    },
+    {
+      id: 'reports-analytics',
+      title: 'Reports & Analytics',
+      body: 'The dashboard charts highlight disbursement trends, collections, loan status distribution, and top borrowers. The Reports section adds exportable summaries for portfolio and collection performance.',
+    },
+    {
+      id: 'security-best-practices',
+      title: 'Security Best Practices',
+      body: 'Use strong passwords, keep Supabase environment variables private, and configure your production domain in Supabase Auth redirect settings before hosting the app.',
     },
   ];
 
   return (
     <div className="space-y-8">
-      {/* Header */}
       <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-8 text-white">
         <div className="flex items-center gap-3 mb-4">
           <HelpCircle className="w-8 h-8" />
@@ -145,14 +167,13 @@ export default function Help() {
         </p>
       </div>
 
-      {/* Quick Links */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {guides.map((guide, index) => {
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+        {guides.map((guide) => {
           const Icon = guide.icon;
           return (
             <a
-              key={index}
-              href={guide.link}
+              key={guide.id}
+              href={`#${guide.id}`}
               className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg hover:border-indigo-200 transition-all group"
             >
               <div className="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center mb-4 group-hover:bg-indigo-200 transition-colors">
@@ -165,10 +186,23 @@ export default function Help() {
         })}
       </div>
 
-      {/* Main Content Grid */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-8">
+        <div className="flex items-center gap-3 mb-6">
+          <Book className="w-6 h-6 text-indigo-600" />
+          <h2 className="text-2xl font-bold text-gray-800">Quick Guides</h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {guideDetails.map((guide) => (
+            <div key={guide.id} id={guide.id} className="rounded-xl border border-gray-200 bg-gray-50 p-5 scroll-mt-24">
+              <h3 className="font-semibold text-gray-800 mb-2">{guide.title}</h3>
+              <p className="text-sm text-gray-600 leading-relaxed">{guide.body}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* FAQ Section */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2" id="faq">
           <div className="flex items-center gap-3 mb-6">
             <Book className="w-6 h-6 text-indigo-600" />
             <h2 className="text-2xl font-bold text-gray-800">Frequently Asked Questions</h2>
@@ -176,7 +210,7 @@ export default function Help() {
           <div className="space-y-3">
             {faqs.map((faq, index) => (
               <FAQItem
-                key={index}
+                key={faq.question}
                 question={faq.question}
                 answer={faq.answer}
                 isOpen={openFAQ === index}
@@ -186,18 +220,17 @@ export default function Help() {
           </div>
         </div>
 
-        {/* Support Section */}
-        <div>
+        <div id="support">
           <div className="flex items-center gap-3 mb-6">
             <Zap className="w-6 h-6 text-amber-500" />
             <h2 className="text-2xl font-bold text-gray-800">Contact Support</h2>
           </div>
           <div className="space-y-4">
-            {supportOptions.map((option, index) => {
+            {supportOptions.map((option) => {
               const Icon = option.icon;
               return (
                 <a
-                  key={index}
+                  key={option.title}
                   href={option.link}
                   className="block bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md hover:border-indigo-200 transition-all"
                 >
@@ -216,24 +249,22 @@ export default function Help() {
             })}
           </div>
 
-          {/* Pro Badge */}
           <div className="mt-6 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border border-amber-200 p-5">
             <div className="flex items-center gap-2 mb-2">
               <Zap className="w-5 h-5 text-amber-600" />
               <span className="font-bold text-amber-800">Pro Tip</span>
             </div>
             <p className="text-sm text-amber-700">
-              Upgrade to Professional or Enterprise plan for priority support,
-              custom reports, and team collaboration features.
+              Upgrade to Professional or Enterprise for priority support,
+              exportable reports, and stronger collaboration features.
             </p>
           </div>
         </div>
       </div>
 
-      {/* Version Info */}
       <div className="bg-gray-100 rounded-xl p-4 text-center text-sm text-gray-500">
-        LendSmart v1.0.0 • Build {new Date().toLocaleDateString()} •
-        <a href="#" className="text-indigo-600 hover:underline ml-1">Check for Updates</a>
+        LendSmart v1.0.0 | Build {new Date().toLocaleDateString()} |
+        <a href="#faq" className="text-indigo-600 hover:underline ml-1">Jump to FAQ</a>
       </div>
     </div>
   );

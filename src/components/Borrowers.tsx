@@ -1,4 +1,4 @@
-import { Borrower, Loan } from '../types';
+import { Borrower, Loan, Repayment } from '../types';
 import { formatCurrency, formatDate, getLoansByBorrower, getLoanProgress } from '../utils';
 import { Plus, Search, Trash2, Eye, Users, Phone, Mail, MapPin } from 'lucide-react';
 import { useState } from 'react';
@@ -6,12 +6,13 @@ import { useState } from 'react';
 interface BorrowersProps {
   borrowers: Borrower[];
   loans: Loan[];
+  repayments: Repayment[];
   onAdd: () => void;
   onDelete: (id: string) => void;
   onSelect: (borrower: Borrower) => void;
 }
 
-export default function Borrowers({ borrowers, loans, onAdd, onDelete, onSelect }: BorrowersProps) {
+export default function Borrowers({ borrowers, loans, repayments, onAdd, onDelete, onSelect }: BorrowersProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedBorrower, setSelectedBorrower] = useState<Borrower | null>(null);
 
@@ -22,6 +23,7 @@ export default function Borrowers({ borrowers, loans, onAdd, onDelete, onSelect 
   );
 
   const handleViewDetails = (borrower: Borrower) => {
+    onSelect(borrower);
     setSelectedBorrower(borrower);
   };
 
@@ -149,13 +151,13 @@ export default function Borrowers({ borrowers, loans, onAdd, onDelete, onSelect 
                           <div className="flex justify-between text-sm">
                             <span className="text-gray-600">{formatCurrency(loan.amount)}</span>
                             <span className="font-medium text-indigo-600">
-                              {getLoanProgress(loan, []).toFixed(0)}%
+                              {getLoanProgress(loan, repayments).toFixed(0)}%
                             </span>
                           </div>
                           <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                             <div
                               className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full"
-                              style={{ width: `${getLoanProgress(loan, [])}%` }}
+                              style={{ width: `${getLoanProgress(loan, repayments)}%` }}
                             ></div>
                           </div>
                         </div>

@@ -1,27 +1,34 @@
-import { useState, useEffect } from 'react';
-import { User } from '@supabase/supabase-js';
-import { supabase, auth, db } from './lib/supabase';
-import Dashboard from './components/Dashboard';
-import Borrowers from './components/Borrowers';
-import Loans from './components/Loans';
-import Repayments from './components/Repayments';
-import Reports from './components/Reports';
-import Settings from './components/Settings';
-import Help from './components/Help';
-import Sidebar from './components/Sidebar';
-import Header from './components/Header';
-import AddBorrowerModal from './components/AddBorrowerModal';
-import AddLoanModal from './components/AddLoanModal';
-import AddRepaymentModal from './components/AddRepaymentModal';
-import AuthPage from './components/AuthPage';
-import SubscriptionPage from './components/SubscriptionPage';
-import EmailVerificationNotice from './components/EmailVerificationNotice';
-import { Borrower, Loan, Repayment } from './types';
+import { useState, useEffect } from "react";
+import { User } from "@supabase/supabase-js";
+import { supabase, auth, db } from "./lib/supabase";
+import Dashboard from "./components/Dashboard";
+import Borrowers from "./components/Borrowers";
+import Loans from "./components/Loans";
+import Repayments from "./components/Repayments";
+import Reports from "./components/Reports";
+import Settings from "./components/Settings";
+import Help from "./components/Help";
+import Sidebar from "./components/Sidebar";
+import Header from "./components/Header";
+import AddBorrowerModal from "./components/AddBorrowerModal";
+import AddLoanModal from "./components/AddLoanModal";
+import AddRepaymentModal from "./components/AddRepaymentModal";
+import AuthPage from "./components/AuthPage";
+import SubscriptionPage from "./components/SubscriptionPage";
+import EmailVerificationNotice from "./components/EmailVerificationNotice";
+import { Borrower, Loan, Repayment, Subscription } from "./types";
+import {
+  getLoanStatus,
+  normalizeBorrower,
+  normalizeLoan,
+  normalizeRepayment,
+} from "./utils";
 
 function App() {
+  const paypalBusinessEmail = import.meta.env.VITE_PAYPAL_BUSINESS_EMAIL;
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeSection, setActiveSection] = useState('dashboard');
+  const [activeSection, setActiveSection] = useState("dashboard");
   const [borrowers, setBorrowers] = useState<Borrower[]>([]);
   const [loans, setLoans] = useState<Loan[]>([]);
   const [repayments, setRepayments] = useState<Repayment[]>([]);
@@ -29,12 +36,10 @@ function App() {
   const [showAddLoan, setShowAddLoan] = useState(false);
   const [showAddRepayment, setShowAddRepayment] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [subscription, setSubscription] = useState<any>(null);
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [showEmailVerification, setShowEmailVerification] = useState(false);
-  const [newlySignedUp, setNewlySignedUp] = useState(false);
   const [canResendEmail, setCanResendEmail] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
-  const [signupError, setSignupError] = useState<string | null>(null);
 
   // Countdown timer for email resend cooldown
   useEffect(() => {
@@ -52,29 +57,33 @@ function App() {
   // Load data from Supabase
   const loadData = async (userId: string) => {
     try {
-      const [borrowersResult, loansResult, repaymentsResult] = await Promise.all([
-        db.getBorrowers(userId),
-        db.getLoans(userId),
-        db.getRepayments(userId),
-      ]);
+      const [borrowersResult, loansResult, repaymentsResult] =
+        await Promise.all([
+          db.getBorrowers(userId),
+          db.getLoans(userId),
+          db.getRepayments(userId),
+        ]);
 
-      if (borrowersResult.data) setBorrowers(borrowersResult.data);
-      if (loansResult.data) setLoans(loansResult.data);
-      if (repaymentsResult.data) setRepayments(repaymentsResult.data);
+      setBorrowers((borrowersResult.data || []).map(normalizeBorrower));
+      setLoans((loansResult.data || []).map(normalizeLoan));
+      setRepayments((repaymentsResult.data || []).map(normalizeRepayment));
     } catch (error) {
-      console.error('Error loading data:', error);
+      console.error("Error loading data:", error);
     }
   };
 
   const loadSubscription = async (userId: string) => {
     const { data } = await db.getSubscription(userId);
-    setSubscription(data);
+    setSubscription(data || null);
   };
 
   useEffect(() => {
     // Check for email confirmation in URL
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('type') === 'signup' || urlParams.get('confirmation') === 'true') {
+    if (
+      urlParams.get("type") === "signup" ||
+      urlParams.get("confirmation") === "true"
+    ) {
       // Email confirmation detected
       window.history.replaceState({}, document.title, window.location.pathname);
     }
@@ -90,67 +99,89 @@ function App() {
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = auth.onAuthStateChange((event, session) => {
+    const {
+      data: { subscription },
+    } = auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
         loadData(session.user.id);
         loadSubscription(session.user.id);
 
         // Check if user just signed up (email not confirmed)
-        if (event === 'SIGNED_IN' && session.user.email_confirmed_at === null) {
+        if (event === "SIGNED_IN" && session.user.email_confirmed_at === null) {
           setShowEmailVerification(true);
+          setCanResendEmail(false);
+          setResendCooldown(60);
         }
       } else {
         setBorrowers([]);
         setLoans([]);
         setRepayments([]);
+        setSubscription(null);
       }
     });
 
-    // Real-time subscriptions for live updates
-    let borrowersChannel: any;
-    let loansChannel: any;
-    let repaymentsChannel: any;
-
-    if (supabase) {
-      borrowersChannel = supabase
-        .channel('borrowers-changes')
-        .on('postgres_changes',
-          { event: '*', schema: 'public', table: 'borrowers' },
-          (payload) => {
-            if (user) loadData(user.id);
-          }
-        )
-        .subscribe();
-
-      loansChannel = supabase
-        .channel('loans-changes')
-        .on('postgres_changes',
-          { event: '*', schema: 'public', table: 'loans' },
-          (payload) => {
-            if (user) loadData(user.id);
-          }
-        )
-        .subscribe();
-
-      repaymentsChannel = supabase
-        .channel('repayments-changes')
-        .on('postgres_changes',
-          { event: '*', schema: 'public', table: 'repayments' },
-          (payload) => {
-            if (user) loadData(user.id);
-          }
-        )
-        .subscribe();
-    }
-
     return () => {
       subscription.unsubscribe();
-      if (borrowersChannel) borrowersChannel.unsubscribe();
-      if (loansChannel) loansChannel.unsubscribe();
-      if (repaymentsChannel) repaymentsChannel.unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const refreshUserData = () => {
+      loadData(user.id);
+      loadSubscription(user.id);
+    };
+
+    const borrowersChannel = supabase
+      .channel(`borrowers-changes-${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "borrowers",
+          filter: `user_id=eq.${user.id}`,
+        },
+        refreshUserData,
+      )
+      .subscribe();
+
+    const loansChannel = supabase
+      .channel(`loans-changes-${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "loans",
+          filter: `user_id=eq.${user.id}`,
+        },
+        refreshUserData,
+      )
+      .subscribe();
+
+    const repaymentsChannel = supabase
+      .channel(`repayments-changes-${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "repayments",
+          filter: `user_id=eq.${user.id}`,
+        },
+        refreshUserData,
+      )
+      .subscribe();
+
+    return () => {
+      borrowersChannel.unsubscribe();
+      loansChannel.unsubscribe();
+      repaymentsChannel.unsubscribe();
+    };
+  }, [user?.id]);
 
   const handleSignIn = async (email: string, password: string) => {
     const { data, error } = await auth.signIn(email, password);
@@ -158,15 +189,21 @@ function App() {
     return data;
   };
 
-  const handleSignUp = async (email: string, password: string, name: string) => {
-    setSignupError(null);
+  const handleSignUp = async (
+    email: string,
+    password: string,
+    name: string,
+  ) => {
     try {
       const { data, error } = await auth.signUp(email, password, name);
 
       // Handle rate limit error specifically
-      if (error?.message?.includes('rate') || error?.message?.includes('429') || error?.message?.includes('try again later')) {
-        setSignupError('Too many signup attempts. Please wait a few minutes and try again.');
-        throw new Error('Rate limit exceeded');
+      if (
+        error?.message?.includes("rate") ||
+        error?.message?.includes("429") ||
+        error?.message?.includes("try again later")
+      ) {
+        throw new Error("Rate limit exceeded");
       }
 
       if (error) throw error;
@@ -174,7 +211,6 @@ function App() {
       // Show email verification notice for new users
       if (data.user && !data.user.email_confirmed_at) {
         setShowEmailVerification(true);
-        setNewlySignedUp(true);
         // Start cooldown for resend button
         setCanResendEmail(false);
         setResendCooldown(60);
@@ -185,19 +221,19 @@ function App() {
         try {
           await db.createSubscription({
             user_id: data.user.id,
-            plan: 'free',
-            status: 'active',
-            billing_cycle: 'monthly',
+            plan: "free",
+            status: "active",
+            billing_cycle: "monthly",
             price: 0,
           });
         } catch (subError) {
-          console.log('Subscription might already exist:', subError);
+          console.log("Subscription might already exist:", subError);
         }
       }
       return data;
     } catch (error: any) {
-      if (error.message !== 'Rate limit exceeded') {
-        console.error('Signup error:', error);
+      if (error.message !== "Rate limit exceeded") {
+        console.error("Signup error:", error);
       }
       throw error;
     }
@@ -209,11 +245,11 @@ function App() {
     setBorrowers([]);
     setLoans([]);
     setRepayments([]);
+    setSubscription(null);
     setShowEmailVerification(false);
-    setNewlySignedUp(false);
   };
 
-  const handleAddBorrower = async (borrower: Omit<Borrower, 'id'>) => {
+  const handleAddBorrower = async (borrower: Omit<Borrower, "id">) => {
     if (!user) return;
     try {
       const { data, error } = await db.addBorrower(user.id, {
@@ -225,16 +261,16 @@ function App() {
       });
       if (error) throw error;
       if (data) {
-        setBorrowers(prev => [data, ...prev]);
+        setBorrowers((prev) => [normalizeBorrower(data), ...prev]);
       }
       setShowAddBorrower(false);
     } catch (error) {
-      console.error('Error adding borrower:', error);
-      alert('Failed to add borrower');
+      console.error("Error adding borrower:", error);
+      alert("Failed to add borrower");
     }
   };
 
-  const handleAddLoan = async (loan: Omit<Loan, 'id'>) => {
+  const handleAddLoan = async (loan: Omit<Loan, "id">) => {
     if (!user) return;
     try {
       const { data, error } = await db.addLoan(user.id, {
@@ -244,22 +280,25 @@ function App() {
         term_months: loan.termMonths,
         start_date: loan.startDate,
         due_date: loan.dueDate,
-        status: 'active',
+        status: "active",
         notes: loan.notes,
       });
       if (error) throw error;
       if (data) {
-        const borrower = borrowers.find(b => b.id === loan.borrowerId);
-        setLoans(prev => [{ ...data, borrowers: borrower } as any, ...prev]);
+        const borrower = borrowers.find((b) => b.id === loan.borrowerId);
+        setLoans((prev) => [
+          normalizeLoan({ ...data, borrowers: borrower }),
+          ...prev,
+        ]);
       }
       setShowAddLoan(false);
     } catch (error) {
-      console.error('Error adding loan:', error);
-      alert('Failed to add loan');
+      console.error("Error adding loan:", error);
+      alert("Failed to add loan");
     }
   };
 
-  const handleAddRepayment = async (repayment: Omit<Repayment, 'id'>) => {
+  const handleAddRepayment = async (repayment: Omit<Repayment, "id">) => {
     if (!user) return;
     try {
       const { data, error } = await db.addRepayment(user.id, {
@@ -271,52 +310,75 @@ function App() {
       });
       if (error) throw error;
       if (data) {
-        const loan = loans.find(l => l.id === repayment.loanId);
-        setRepayments(prev => [{ ...data, loans: loan } as any, ...prev]);
+        const loan = loans.find((l) => l.id === repayment.loanId);
+        const normalizedRepayment = normalizeRepayment({
+          ...data,
+          loans: loan,
+        });
+        const nextRepayments = [normalizedRepayment, ...repayments];
+        setRepayments((prev) => [normalizedRepayment, ...prev]);
 
-        // Update loan status
-        setLoans(prev => prev.map(l => {
-          if (l.id === repayment.loanId) {
-            const loanRepayments = repayments.filter(r => r.loanId === l.id);
-            const totalPaid = loanRepayments.reduce((sum, r) => sum + r.amount, 0) + repayment.amount;
-            const status: 'active' | 'paid' | 'overdue' = totalPaid >= l.amount ? 'paid' : 'active';
-            return { ...l, status };
-          }
-          return l;
-        }));
+        if (loan) {
+          const nextStatus = getLoanStatus(loan, nextRepayments);
+          const { data: updatedLoanData, error: loanUpdateError } =
+            await db.updateLoan(loan.id, {
+              status: nextStatus,
+            });
+          if (loanUpdateError) throw loanUpdateError;
+
+          const normalizedLoan = normalizeLoan({
+            ...(updatedLoanData || loan),
+            borrowers: loan.borrowers,
+            status: nextStatus,
+          });
+          setLoans((prev) =>
+            prev.map((existingLoan) =>
+              existingLoan.id === loan.id ? normalizedLoan : existingLoan,
+            ),
+          );
+        }
       }
       setShowAddRepayment(false);
     } catch (error) {
-      console.error('Error adding repayment:', error);
-      alert('Failed to add repayment');
+      console.error("Error adding repayment:", error);
+      alert("Failed to add repayment");
     }
   };
 
   const handleDeleteBorrower = async (id: string) => {
     if (!user) return;
-    if (!confirm('Are you sure you want to delete this borrower? All associated loans will also be deleted.')) return;
+    if (
+      !confirm(
+        "Are you sure you want to delete this borrower? All associated loans will also be deleted.",
+      )
+    )
+      return;
     try {
       const { error } = await db.deleteBorrower(id);
       if (error) throw error;
-      setBorrowers(prev => prev.filter(b => b.id !== id));
-      setLoans(prev => prev.filter(l => l.borrower_id !== id));
+      setBorrowers((prev) => prev.filter((b) => b.id !== id));
+      setLoans((prev) =>
+        prev.filter((l) => l.borrowerId !== id && l.borrower_id !== id),
+      );
     } catch (error) {
-      console.error('Error deleting borrower:', error);
-      alert('Failed to delete borrower');
+      console.error("Error deleting borrower:", error);
+      alert("Failed to delete borrower");
     }
   };
 
   const handleDeleteLoan = async (id: string) => {
     if (!user) return;
-    if (!confirm('Are you sure you want to delete this loan?')) return;
+    if (!confirm("Are you sure you want to delete this loan?")) return;
     try {
       const { error } = await db.deleteLoan(id);
       if (error) throw error;
-      setLoans(prev => prev.filter(l => l.id !== id));
-      setRepayments(prev => prev.filter(r => r.loan_id !== id));
+      setLoans((prev) => prev.filter((l) => l.id !== id));
+      setRepayments((prev) =>
+        prev.filter((r) => r.loanId !== id && r.loan_id !== id),
+      );
     } catch (error) {
-      console.error('Error deleting loan:', error);
-      alert('Failed to delete loan');
+      console.error("Error deleting loan:", error);
+      alert("Failed to delete loan");
     }
   };
 
@@ -329,7 +391,7 @@ function App() {
       if (subscription) {
         await db.updateSubscription(subscription.id, {
           plan,
-          status: 'active',
+          status: "active",
           price,
           end_date: endDate.toISOString(),
         });
@@ -337,88 +399,104 @@ function App() {
         await db.createSubscription({
           user_id: user.id,
           plan,
-          status: 'active',
-          billing_cycle: 'monthly',
+          status: "active",
+          billing_cycle: "monthly",
           price,
           end_date: endDate.toISOString(),
         });
       }
       loadSubscription(user.id);
-      alert(`Successfully upgraded to ${plan} plan! Redirecting to PayPal...`);
 
-      // Redirect to PayPal for payment (mock - replace with actual PayPal URL)
-      const paypalUrl = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=YOUR_PAYPAL_EMAIL&item_name=LendSmart_${plan}&amount=${price}&currency_code=USD&return=${window.location.origin}&cancel_return=${window.location.origin}/subscription`;
-      window.open(paypalUrl, '_blank');
+      if (price > 0 && paypalBusinessEmail) {
+        const paypalUrl = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(paypalBusinessEmail)}&item_name=${encodeURIComponent(`LendSmart_${plan}`)}&amount=${price}&currency_code=USD&return=${encodeURIComponent(window.location.origin)}&cancel_return=${encodeURIComponent(`${window.location.origin}/subscription`)}`;
+        alert(
+          `Successfully upgraded to ${plan} plan! Redirecting to PayPal...`,
+        );
+        window.open(paypalUrl, "_blank");
+      } else {
+        alert(
+          `Successfully updated to the ${plan} plan. Add VITE_PAYPAL_BUSINESS_EMAIL to enable live checkout.`,
+        );
+      }
     } catch (error) {
-      console.error('Error upgrading subscription:', error);
-      alert('Failed to upgrade subscription');
+      console.error("Error upgrading subscription:", error);
+      alert("Failed to upgrade subscription");
     }
   };
 
   const handleResendVerification = async () => {
-    if (!user?.email) return;
+    if (!user?.email) {
+      throw new Error("Missing email address for verification.");
+    }
     if (!canResendEmail) {
-      alert(`Please wait ${resendCooldown} seconds before trying again.`);
-      return;
+      throw new Error(
+        `Please wait ${resendCooldown} seconds before trying again.`,
+      );
     }
 
     try {
       setCanResendEmail(false);
       const { error } = await supabase.auth.resend({
-        type: 'signup',
+        type: "signup",
         email: user.email,
       });
 
       if (error) {
-        // Check for rate limit
-        if (error.message?.includes('rate') || error.message?.includes('429')) {
-          alert('Too many requests. Please wait a few minutes and try again.');
-        } else {
-          alert('Failed to send verification email. Please try again later.');
+        if (error.message?.includes("rate") || error.message?.includes("429")) {
+          throw new Error(
+            "Too many requests. Please wait a few minutes and try again.",
+          );
         }
-        throw error;
+        throw new Error(
+          "Failed to send verification email. Please try again later.",
+        );
       }
 
-      alert('Verification email sent! Please check your inbox.');
+      alert("Verification email sent! Please check your inbox.");
       // Start cooldown after successful resend
       setResendCooldown(60);
     } catch (error) {
-      console.error('Error resending verification:', error);
+      console.error("Error resending verification:", error);
+      throw error instanceof Error
+        ? error
+        : new Error("Failed to resend verification email.");
     }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-indigo-600"></div>
       </div>
     );
   }
 
   if (!user) {
-    return (
-      <AuthPage
-        onSignIn={handleSignIn}
-        onSignUp={handleSignUp}
-      />
-    );
+    return <AuthPage onSignIn={handleSignIn} onSignUp={handleSignUp} />;
   }
 
   const renderContent = () => {
     switch (activeSection) {
-      case 'dashboard':
-        return <Dashboard borrowers={borrowers} loans={loans} repayments={repayments} />;
-      case 'borrowers':
+      case "dashboard":
+        return (
+          <Dashboard
+            borrowers={borrowers}
+            loans={loans}
+            repayments={repayments}
+          />
+        );
+      case "borrowers":
         return (
           <Borrowers
             borrowers={borrowers}
             loans={loans}
+            repayments={repayments}
             onAdd={() => setShowAddBorrower(true)}
             onDelete={handleDeleteBorrower}
             onSelect={() => {}}
           />
         );
-      case 'loans':
+      case "loans":
         return (
           <Loans
             loans={loans}
@@ -429,34 +507,53 @@ function App() {
             onSelect={() => {}}
           />
         );
-      case 'repayments':
+      case "repayments":
         return (
           <Repayments
             repayments={repayments}
             loans={loans}
+            borrowers={borrowers}
             onAdd={() => setShowAddRepayment(true)}
           />
         );
-      case 'reports':
-        return <Reports borrowers={borrowers} loans={loans} repayments={repayments} />;
-      case 'subscription':
+      case "reports":
+        return (
+          <Reports
+            borrowers={borrowers}
+            loans={loans}
+            repayments={repayments}
+          />
+        );
+      case "subscription":
         return (
           <SubscriptionPage
-            currentPlan={subscription?.plan || 'free'}
+            currentPlan={subscription?.plan || "free"}
             onUpgrade={handleUpgradeSubscription}
           />
         );
-      case 'help':
+      case "help":
         return <Help />;
-      case 'settings':
-        return <Settings user={user} onSignOut={handleSignOut} subscription={subscription} />;
+      case "settings":
+        return (
+          <Settings
+            user={user}
+            onSignOut={handleSignOut}
+            subscription={subscription}
+          />
+        );
       default:
-        return <Dashboard borrowers={borrowers} loans={loans} repayments={repayments} />;
+        return (
+          <Dashboard
+            borrowers={borrowers}
+            loans={loans}
+            repayments={repayments}
+          />
+        );
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="flex max-h-screen min-h-screen bg-gray-50">
       <Sidebar
         activeSection={activeSection}
         setActiveSection={setActiveSection}
@@ -465,21 +562,19 @@ function App() {
         user={user}
         onSignOut={handleSignOut}
       />
-      <div className="flex-1 flex flex-col min-h-screen">
+      <div className="flex min-h-screen flex-1 flex-col">
         <Header
           title={activeSection}
           onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
           user={user}
         />
-        <main className="flex-1 p-6 overflow-auto">
-          {renderContent()}
-        </main>
+        <main className="flex-1 overflow-auto p-6">{renderContent()}</main>
       </div>
 
       {/* Email Verification Notice */}
       {showEmailVerification && user && !user.email_confirmed_at && (
         <EmailVerificationNotice
-          email={user.email || ''}
+          email={user.email || ""}
           onDismiss={() => setShowEmailVerification(false)}
           onResend={handleResendVerification}
           cooldown={resendCooldown}
@@ -503,7 +598,8 @@ function App() {
 
       {showAddRepayment && (
         <AddRepaymentModal
-          loans={loans.filter(l => l.status === 'active')}
+          loans={loans.filter((l) => l.status === "active")}
+          borrowers={borrowers}
           onClose={() => setShowAddRepayment(false)}
           onAdd={handleAddRepayment}
         />

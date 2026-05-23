@@ -1,6 +1,14 @@
 import { Borrower, Loan, Repayment } from '../types';
-import { formatCurrency, getBorrowerById } from '../utils';
-import { BarChart3, TrendingUp, DollarSign, Users, Download, FileText } from 'lucide-react';
+import {
+  formatCurrency,
+  formatDate,
+  getBorrowerById,
+  getLoanBorrowerId,
+  getLoanDueDate,
+  getLoanInterestRate,
+  getRepaymentLoanId,
+} from '../utils';
+import { BarChart3, DollarSign, Users, Download } from 'lucide-react';
 import { useState } from 'react';
 
 interface ReportsProps {
@@ -9,49 +17,96 @@ interface ReportsProps {
   repayments: Repayment[];
 }
 
+const escapeCsv = (value: string | number) => {
+  const text = String(value ?? '');
+  if (/[",\n]/.test(text)) {
+    return `"${text.replace(/"/g, '""')}"`;
+  }
+  return text;
+};
+
+const downloadCsv = (filename: string, rows: Array<Record<string, string | number>>) => {
+  if (rows.length === 0) return;
+
+  const headers = Object.keys(rows[0]);
+  const csv = [
+    headers.join(','),
+    ...rows.map((row) => headers.map((header) => escapeCsv(row[header] ?? '')).join(',')),
+  ].join('\n');
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+};
+
 export default function Reports({ borrowers, loans, repayments }: ReportsProps) {
   const [selectedReport, setSelectedReport] = useState('portfolio');
 
-  const totalDisbursed = loans.reduce((sum, l) => sum + l.amount, 0);
-  const totalCollected = repayments.reduce((sum, r) => sum + r.amount, 0);
+  const totalDisbursed = loans.reduce((sum, loan) => sum + loan.amount, 0);
+  const totalCollected = repayments.reduce((sum, repayment) => sum + repayment.amount, 0);
   const totalOutstanding = totalDisbursed - totalCollected;
 
-  const activeLoans = loans.filter(l => l.status === 'active');
-  const paidLoans = loans.filter(l => l.status === 'paid');
-  const overdueLoans = loans.filter(l => l.status === 'overdue' || (l.status === 'active' && new Date(l.dueDate) < new Date()));
+  const activeLoans = loans.filter((loan) => loan.status === 'active');
+  const paidLoans = loans.filter((loan) => loan.status === 'paid');
+  const overdueLoans = loans.filter(
+    (loan) =>
+      loan.status === 'overdue' ||
+      (loan.status === 'active' && new Date(getLoanDueDate(loan)) < new Date())
+  );
 
   const avgInterestRate = loans.length > 0
-    ? loans.reduce((sum, l) => sum + l.interestRate, 0) / loans.length
+    ? loans.reduce((sum, loan) => sum + getLoanInterestRate(loan), 0) / loans.length
     : 0;
 
   const avgLoanAmount = loans.length > 0 ? totalDisbursed / loans.length : 0;
 
-  // Monthly collection data (last 6 months)
-  const monthlyData = Array.from({ length: 6 }, (_, i) => {
+  const monthlyData = Array.from({ length: 6 }, (_, index) => {
     const date = new Date();
-    date.setMonth(date.getMonth() - (5 - i));
+    date.setMonth(date.getMonth() - (5 - index));
     const monthName = date.toLocaleDateString('en-US', { month: 'short' });
-    const monthRepayments = repayments.filter(r => {
-      const rDate = new Date(r.date);
-      return rDate.getMonth() === date.getMonth() && rDate.getFullYear() === date.getFullYear();
-    }).reduce((sum, r) => sum + r.amount, 0);
+    const monthRepayments = repayments
+      .filter((repayment) => {
+        const repaymentDate = new Date(repayment.date);
+        return repaymentDate.getMonth() === date.getMonth() && repaymentDate.getFullYear() === date.getFullYear();
+      })
+      .reduce((sum, repayment) => sum + repayment.amount, 0);
+
     return { month: monthName, amount: monthRepayments };
   });
 
-  // Loan distribution by status
   const statusDistribution = [
-    { status: 'Active', count: activeLoans.length, amount: activeLoans.reduce((sum, l) => sum + l.amount, 0), color: 'bg-indigo-500' },
-    { status: 'Paid', count: paidLoans.length, amount: paidLoans.reduce((sum, l) => sum + l.amount, 0), color: 'bg-emerald-500' },
-    { status: 'Overdue', count: overdueLoans.length, amount: overdueLoans.reduce((sum, l) => sum + l.amount, 0), color: 'bg-red-500' },
+    {
+      status: 'Active',
+      count: activeLoans.length,
+      amount: activeLoans.reduce((sum, loan) => sum + loan.amount, 0),
+      color: 'bg-indigo-500',
+    },
+    {
+      status: 'Paid',
+      count: paidLoans.length,
+      amount: paidLoans.reduce((sum, loan) => sum + loan.amount, 0),
+      color: 'bg-emerald-500',
+    },
+    {
+      status: 'Overdue',
+      count: overdueLoans.length,
+      amount: overdueLoans.reduce((sum, loan) => sum + loan.amount, 0),
+      color: 'bg-red-500',
+    },
   ];
 
-  // Top borrowers by loan amount
   const topBorrowers = borrowers
-    .map(b => ({
-      ...b,
-      totalLoans: loans.filter(l => l.borrowerId === b.id).reduce((sum, l) => sum + l.amount, 0),
+    .map((borrower) => ({
+      ...borrower,
+      totalLoans: loans
+        .filter((loan) => getLoanBorrowerId(loan) === borrower.id)
+        .reduce((sum, loan) => sum + loan.amount, 0),
     }))
-    .sort((a, b) => b.totalLoans - a.totalLoans)
+    .sort((first, second) => second.totalLoans - first.totalLoans)
     .slice(0, 5);
 
   const reportTypes = [
@@ -60,9 +115,54 @@ export default function Reports({ borrowers, loans, repayments }: ReportsProps) 
     { id: 'borrowers', label: 'Borrower Report', icon: Users },
   ];
 
+  const handleExport = () => {
+    if (selectedReport === 'portfolio') {
+      downloadCsv('portfolio-summary.csv', [
+        { metric: 'Total Disbursed', value: totalDisbursed },
+        { metric: 'Total Collected', value: totalCollected },
+        { metric: 'Outstanding', value: totalOutstanding },
+        { metric: 'Collection Rate', value: `${totalDisbursed > 0 ? ((totalCollected / totalDisbursed) * 100).toFixed(1) : 0}%` },
+        { metric: 'Average Interest Rate', value: `${avgInterestRate.toFixed(1)}%` },
+        { metric: 'Average Loan Amount', value: avgLoanAmount },
+      ]);
+      return;
+    }
+
+    if (selectedReport === 'collection') {
+      downloadCsv(
+        'collection-report.csv',
+        activeLoans.map((loan) => {
+          const borrower = getBorrowerById(borrowers, getLoanBorrowerId(loan));
+          const loanRepayments = repayments.filter((repayment) => getRepaymentLoanId(repayment) === loan.id);
+          const totalPaid = loanRepayments.reduce((sum, repayment) => sum + repayment.amount, 0);
+          const remaining = loan.amount - totalPaid;
+
+          return {
+            borrower: borrower?.name || 'Unknown',
+            loan_id: loan.id,
+            loan_amount: loan.amount,
+            total_paid: totalPaid,
+            remaining,
+            progress_percent: loan.amount > 0 ? Number(((totalPaid / loan.amount) * 100).toFixed(1)) : 0,
+          };
+        })
+      );
+      return;
+    }
+
+    downloadCsv(
+      'borrower-report.csv',
+      topBorrowers.map((borrower) => ({
+        borrower: borrower.name,
+        email: borrower.email,
+        phone: borrower.phone,
+        total_borrowed: borrower.totalLoans,
+      }))
+    );
+  };
+
   return (
     <div className="space-y-6">
-      {/* Report Type Selector */}
       <div className="flex flex-wrap gap-4">
         {reportTypes.map((report) => {
           const Icon = report.icon;
@@ -83,19 +183,20 @@ export default function Reports({ borrowers, loans, repayments }: ReportsProps) 
         })}
       </div>
 
-      {/* Report Content */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
         {selectedReport === 'portfolio' && (
           <>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-gray-800">Portfolio Summary Report</h2>
-              <button className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+              <button
+                onClick={handleExport}
+                className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+              >
                 <Download className="w-4 h-4" />
-                Export PDF
+                Export CSV
               </button>
             </div>
 
-            {/* Key Metrics */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
               <div className="p-4 bg-gray-50 rounded-xl">
                 <p className="text-sm text-gray-500 mb-1">Total Disbursed</p>
@@ -117,9 +218,7 @@ export default function Reports({ borrowers, loans, repayments }: ReportsProps) 
               </div>
             </div>
 
-            {/* Charts Placeholder - Simple Table View */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-              {/* Loan Status Distribution */}
               <div className="p-6 bg-gray-50 rounded-xl">
                 <h3 className="font-semibold text-gray-800 mb-4">Loan Status Distribution</h3>
                 <div className="space-y-4">
@@ -144,15 +243,14 @@ export default function Reports({ borrowers, loans, repayments }: ReportsProps) 
                 </div>
               </div>
 
-              {/* Monthly Collection Trend */}
               <div className="p-6 bg-gray-50 rounded-xl">
                 <h3 className="font-semibold text-gray-800 mb-4">Monthly Collection Trend</h3>
                 <div className="flex items-end gap-2 h-32">
-                  {monthlyData.map((data, index) => {
-                    const maxAmount = Math.max(...monthlyData.map(d => d.amount), 1);
+                  {monthlyData.map((data) => {
+                    const maxAmount = Math.max(...monthlyData.map((item) => item.amount), 1);
                     const height = (data.amount / maxAmount) * 100;
                     return (
-                      <div key={index} className="flex-1 flex flex-col items-center gap-2">
+                      <div key={data.month} className="flex-1 flex flex-col items-center gap-2">
                         <div
                           className="w-full bg-gradient-to-t from-indigo-500 to-purple-500 rounded-t"
                           style={{ height: `${height}%`, minHeight: data.amount > 0 ? '4px' : '0' }}
@@ -165,7 +263,6 @@ export default function Reports({ borrowers, loans, repayments }: ReportsProps) 
               </div>
             </div>
 
-            {/* Statistics */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="p-6 bg-gray-50 rounded-xl">
                 <p className="text-sm text-gray-500 mb-1">Average Interest Rate</p>
@@ -187,7 +284,10 @@ export default function Reports({ borrowers, loans, repayments }: ReportsProps) 
           <>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-gray-800">Collection Report</h2>
-              <button className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+              <button
+                onClick={handleExport}
+                className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+              >
                 <Download className="w-4 h-4" />
                 Export CSV
               </button>
@@ -206,9 +306,9 @@ export default function Reports({ borrowers, loans, repayments }: ReportsProps) 
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {activeLoans.map((loan) => {
-                    const borrower = getBorrowerById(borrowers, loan.borrowerId);
-                    const loanRepayments = repayments.filter(r => r.loanId === loan.id);
-                    const totalPaid = loanRepayments.reduce((sum, r) => sum + r.amount, 0);
+                    const borrower = getBorrowerById(borrowers, getLoanBorrowerId(loan));
+                    const loanRepayments = repayments.filter((repayment) => getRepaymentLoanId(repayment) === loan.id);
+                    const totalPaid = loanRepayments.reduce((sum, repayment) => sum + repayment.amount, 0);
                     const remaining = loan.amount - totalPaid;
                     const progress = (totalPaid / loan.amount) * 100;
 
@@ -239,9 +339,12 @@ export default function Reports({ borrowers, loans, repayments }: ReportsProps) 
           <>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-gray-800">Borrower Report</h2>
-              <button className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+              <button
+                onClick={handleExport}
+                className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+              >
                 <Download className="w-4 h-4" />
-                Export PDF
+                Export CSV
               </button>
             </div>
 
