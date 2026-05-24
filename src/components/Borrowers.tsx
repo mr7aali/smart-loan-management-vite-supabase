@@ -30,7 +30,7 @@ export default function Borrowers({ borrowers, loans, repayments, onAdd, onDelet
   return (
     <div className="space-y-6">
       {/* Actions Bar */}
-      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+      <div className="flex flex-col items-stretch justify-between gap-4 sm:flex-row sm:items-center">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
@@ -43,7 +43,7 @@ export default function Borrowers({ borrowers, loans, repayments, onAdd, onDelet
         </div>
         <button
           onClick={onAdd}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-white transition-colors hover:bg-indigo-700 sm:w-auto"
         >
           <Plus className="w-4 h-4" />
           Add Borrower
@@ -68,7 +68,7 @@ export default function Borrowers({ borrowers, loans, repayments, onAdd, onDelet
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
           {filteredBorrowers.map((borrower) => {
             const borrowerLoans = getLoansByBorrower(loans, borrower.id);
             const activeLoans = borrowerLoans.filter(l => l.status === 'active');
@@ -181,8 +181,8 @@ export default function Borrowers({ borrowers, loans, repayments, onAdd, onDelet
       {/* Borrower Details Modal */}
       {selectedBorrower && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white">
+            <div className="flex items-center justify-between border-b border-gray-200 p-4 sm:p-6">
               <h2 className="text-xl font-bold text-gray-800">Borrower Details</h2>
               <button
                 onClick={() => setSelectedBorrower(null)}
@@ -194,8 +194,8 @@ export default function Borrowers({ borrowers, loans, repayments, onAdd, onDelet
               </button>
             </div>
 
-            <div className="p-6">
-              <div className="flex items-center gap-4 mb-6">
+            <div className="p-4 sm:p-6">
+              <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center">
                 <div className="w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-3xl">
                   {selectedBorrower.name.charAt(0).toUpperCase()}
                 </div>
@@ -205,7 +205,7 @@ export default function Borrowers({ borrowers, loans, repayments, onAdd, onDelet
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-6 mb-6">
+              <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">
                 <div>
                   <p className="text-sm text-gray-500 mb-1">Phone</p>
                   <p className="font-medium text-gray-800">{selectedBorrower.phone}</p>
@@ -241,9 +241,9 @@ export default function Borrowers({ borrowers, loans, repayments, onAdd, onDelet
                             {loan.status}
                           </span>
                         </div>
-                        <div className="flex gap-4 text-sm">
-                          <span className="text-gray-500">Interest: {loan.interestRate}%</span>
-                          <span className="text-gray-500">Term: {loan.termMonths} months</span>
+                        <div className="flex flex-col gap-1 text-sm text-gray-500 sm:flex-row sm:gap-4">
+                          <span>Interest: {loan.interestRate}%</span>
+                          <span>Term: {loan.termMonths} months</span>
                         </div>
                       </div>
                     ))}

@@ -27,9 +27,9 @@ function FAQItem({ question, answer, isOpen, onClick }: FAQItemProps) {
     <div className="border border-gray-200 rounded-xl overflow-hidden">
       <button
         onClick={onClick}
-        className="w-full flex items-center justify-between p-5 bg-white hover:bg-gray-50 transition-colors"
+        className="flex w-full items-start justify-between gap-3 bg-white p-4 text-left transition-colors hover:bg-gray-50 sm:p-5"
       >
-        <span className="font-semibold text-gray-800 text-left">{question}</span>
+        <span className="font-semibold text-gray-800">{question}</span>
         {isOpen ? (
           <ChevronUp className="w-5 h-5 text-gray-400 flex-shrink-0" />
         ) : (
@@ -37,7 +37,7 @@ function FAQItem({ question, answer, isOpen, onClick }: FAQItemProps) {
         )}
       </button>
       {isOpen && (
-        <div className="p-5 bg-gray-50 border-t border-gray-200">
+        <div className="border-t border-gray-200 bg-gray-50 p-4 sm:p-5">
           <p className="text-gray-600 leading-relaxed">{answer}</p>
         </div>
       )}
@@ -79,7 +79,7 @@ export default function Help() {
     },
     {
       question: 'What payment methods are supported?',
-      answer: 'Repayments can be recorded as cash, bank transfer, UPI, or other. Subscription upgrades use PayPal checkout when a business email is configured for the deployment.',
+      answer: 'Repayments can be recorded as cash, bank transfer, UPI, or other. Subscription upgrades use secure PayPal checkout and activate only after the payment is confirmed server-side.',
     },
   ];
 
@@ -155,26 +155,26 @@ export default function Help() {
   ];
 
   return (
-    <div className="space-y-8">
-      <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-8 text-white">
-        <div className="flex items-center gap-3 mb-4">
+    <div className="space-y-6 sm:space-y-8">
+      <div className="rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 p-6 text-white sm:p-8">
+        <div className="mb-4 flex items-center gap-3">
           <HelpCircle className="w-8 h-8" />
-          <h1 className="text-3xl font-bold">Help Center</h1>
+          <h1 className="text-2xl font-bold sm:text-3xl">Help Center</h1>
         </div>
-        <p className="text-indigo-100 text-lg max-w-2xl">
+        <p className="max-w-2xl text-base text-indigo-100 sm:text-lg">
           Welcome to LendSmart Help Center. Find answers to common questions,
           browse our guides, or contact our support team.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2 xl:grid-cols-4">
         {guides.map((guide) => {
           const Icon = guide.icon;
           return (
             <a
               key={guide.id}
               href={`#${guide.id}`}
-              className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg hover:border-indigo-200 transition-all group"
+              className="group rounded-xl border border-gray-200 bg-white p-5 transition-all hover:border-indigo-200 hover:shadow-lg sm:p-6"
             >
               <div className="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center mb-4 group-hover:bg-indigo-200 transition-colors">
                 <Icon className="w-6 h-6 text-indigo-600" />
@@ -186,14 +186,14 @@ export default function Help() {
         })}
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-100 p-8">
-        <div className="flex items-center gap-3 mb-6">
+      <div className="rounded-2xl border border-gray-100 bg-white p-5 sm:p-8">
+        <div className="mb-6 flex items-center gap-3">
           <Book className="w-6 h-6 text-indigo-600" />
-          <h2 className="text-2xl font-bold text-gray-800">Quick Guides</h2>
+          <h2 className="text-xl font-bold text-gray-800 sm:text-2xl">Quick Guides</h2>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2">
           {guideDetails.map((guide) => (
-            <div key={guide.id} id={guide.id} className="rounded-xl border border-gray-200 bg-gray-50 p-5 scroll-mt-24">
+            <div key={guide.id} id={guide.id} className="scroll-mt-24 rounded-xl border border-gray-200 bg-gray-50 p-4 sm:p-5">
               <h3 className="font-semibold text-gray-800 mb-2">{guide.title}</h3>
               <p className="text-sm text-gray-600 leading-relaxed">{guide.body}</p>
             </div>
@@ -201,11 +201,11 @@ export default function Help() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 gap-6 sm:gap-8 lg:grid-cols-3">
         <div className="lg:col-span-2" id="faq">
-          <div className="flex items-center gap-3 mb-6">
+          <div className="mb-6 flex items-center gap-3">
             <Book className="w-6 h-6 text-indigo-600" />
-            <h2 className="text-2xl font-bold text-gray-800">Frequently Asked Questions</h2>
+            <h2 className="text-xl font-bold text-gray-800 sm:text-2xl">Frequently Asked Questions</h2>
           </div>
           <div className="space-y-3">
             {faqs.map((faq, index) => (
@@ -221,9 +221,9 @@ export default function Help() {
         </div>
 
         <div id="support">
-          <div className="flex items-center gap-3 mb-6">
+          <div className="mb-6 flex items-center gap-3">
             <Zap className="w-6 h-6 text-amber-500" />
-            <h2 className="text-2xl font-bold text-gray-800">Contact Support</h2>
+            <h2 className="text-xl font-bold text-gray-800 sm:text-2xl">Contact Support</h2>
           </div>
           <div className="space-y-4">
             {supportOptions.map((option) => {
@@ -232,9 +232,9 @@ export default function Help() {
                 <a
                   key={option.title}
                   href={option.link}
-                  className="block bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md hover:border-indigo-200 transition-all"
+                  className="block rounded-xl border border-gray-200 bg-white p-4 transition-all hover:border-indigo-200 hover:shadow-md sm:p-5"
                 >
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-start gap-4">
                     <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
                       <Icon className="w-5 h-5 text-amber-600" />
                     </div>
@@ -249,7 +249,7 @@ export default function Help() {
             })}
           </div>
 
-          <div className="mt-6 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border border-amber-200 p-5">
+          <div className="mt-6 rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-4 sm:p-5">
             <div className="flex items-center gap-2 mb-2">
               <Zap className="w-5 h-5 text-amber-600" />
               <span className="font-bold text-amber-800">Pro Tip</span>
@@ -262,7 +262,7 @@ export default function Help() {
         </div>
       </div>
 
-      <div className="bg-gray-100 rounded-xl p-4 text-center text-sm text-gray-500">
+      <div className="rounded-xl bg-gray-100 p-4 text-center text-sm text-gray-500">
         LendSmart v1.0.0 | Build {new Date().toLocaleDateString()} |
         <a href="#faq" className="text-indigo-600 hover:underline ml-1">Jump to FAQ</a>
       </div>

@@ -29,8 +29,8 @@ export default function Loans({ loans, borrowers, repayments, onAdd, onDelete, o
   return (
     <div className="space-y-6">
       {/* Actions Bar */}
-      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-        <div className="flex flex-1 gap-4 items-center">
+      <div className="flex flex-col items-stretch justify-between gap-4 sm:flex-row sm:items-center">
+        <div className="flex flex-1 flex-col gap-4 sm:flex-row sm:items-center">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
@@ -44,7 +44,7 @@ export default function Loans({ loans, borrowers, repayments, onAdd, onDelete, o
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full rounded-lg border border-gray-200 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 sm:w-auto"
           >
             <option value="all">All Status</option>
             <option value="active">Active</option>
@@ -54,7 +54,7 @@ export default function Loans({ loans, borrowers, repayments, onAdd, onDelete, o
         </div>
         <button
           onClick={onAdd}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-white transition-colors hover:bg-indigo-700 sm:w-auto"
         >
           <Plus className="w-4 h-4" />
           Create Loan
@@ -83,7 +83,7 @@ export default function Loans({ loans, borrowers, repayments, onAdd, onDelete, o
       ) : (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="min-w-[760px] w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Borrower</th>
@@ -189,8 +189,8 @@ export default function Loans({ loans, borrowers, repayments, onAdd, onDelete, o
       {/* Loan Details Modal */}
       {selectedLoan && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white">
+            <div className="flex items-center justify-between border-b border-gray-200 p-4 sm:p-6">
               <h2 className="text-xl font-bold text-gray-800">Loan Details</h2>
               <button
                 onClick={() => setSelectedLoan(null)}
@@ -202,7 +202,7 @@ export default function Loans({ loans, borrowers, repayments, onAdd, onDelete, o
               </button>
             </div>
 
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               {(() => {
                 const borrower = getBorrowerById(borrowers, selectedLoan.borrowerId);
                 const loanRepayments = repayments.filter(r => r.loanId === selectedLoan.id);
@@ -211,7 +211,7 @@ export default function Loans({ loans, borrowers, repayments, onAdd, onDelete, o
 
                 return (
                   <>
-                    <div className="flex items-center gap-4 mb-6">
+                    <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center">
                       <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-2xl">
                         {borrower?.name.charAt(0).toUpperCase() || '?'}
                       </div>
@@ -221,7 +221,7 @@ export default function Loans({ loans, borrowers, repayments, onAdd, onDelete, o
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-6 mb-6">
+                    <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">
                       <div className="p-4 bg-gray-50 rounded-xl">
                         <p className="text-sm text-gray-500 mb-1">Loan Amount</p>
                         <p className="text-2xl font-bold text-gray-800">{formatCurrency(selectedLoan.amount)}</p>
@@ -250,7 +250,7 @@ export default function Loans({ loans, borrowers, repayments, onAdd, onDelete, o
 
                     <div className="mb-6">
                       <p className="text-sm text-gray-500 mb-2">Repayment Progress</p>
-                      <div className="flex justify-between text-sm mb-2">
+                      <div className="mb-2 flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-between">
                         <span className="text-gray-600">{progress.toFixed(1)}% complete</span>
                         <span className="font-medium text-gray-800">{formatCurrency(selectedLoan.amount - remaining)} / {formatCurrency(selectedLoan.amount)}</span>
                       </div>
@@ -269,7 +269,7 @@ export default function Loans({ loans, borrowers, repayments, onAdd, onDelete, o
                       ) : (
                         <div className="space-y-3">
                           {loanRepayments.map(repayment => (
-                            <div key={repayment.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                            <div key={repayment.id} className="flex flex-col gap-2 rounded-xl bg-gray-50 p-4 sm:flex-row sm:items-center sm:justify-between">
                               <div>
                                 <p className="font-medium text-gray-800">{formatCurrency(repayment.amount)}</p>
                                 <p className="text-sm text-gray-500">{formatDate(repayment.date)}</p>

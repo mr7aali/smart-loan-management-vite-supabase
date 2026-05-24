@@ -16,7 +16,14 @@ import AddRepaymentModal from "./components/AddRepaymentModal";
 import AuthPage from "./components/AuthPage";
 import SubscriptionPage from "./components/SubscriptionPage";
 import EmailVerificationNotice from "./components/EmailVerificationNotice";
+import PayPalCheckoutModal from "./components/PayPalCheckoutModal";
+import { useIsMobile } from "./hooks/use-mobile";
 import { Borrower, Loan, Repayment, Subscription } from "./types";
+import {
+  isPaidSubscriptionPlanId,
+  SubscriptionPlanId,
+  PaidSubscriptionPlanId,
+} from "./lib/subscription-plans";
 import {
   getLoanStatus,
   normalizeBorrower,
@@ -25,7 +32,7 @@ import {
 } from "./utils";
 
 function App() {
-  const paypalBusinessEmail = import.meta.env.VITE_PAYPAL_BUSINESS_EMAIL;
+  const isMobile = useIsMobile();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeSection, setActiveSection] = useState("dashboard");
@@ -35,11 +42,20 @@ function App() {
   const [showAddBorrower, setShowAddBorrower] = useState(false);
   const [showAddLoan, setShowAddLoan] = useState(false);
   const [showAddRepayment, setShowAddRepayment] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [showEmailVerification, setShowEmailVerification] = useState(false);
   const [canResendEmail, setCanResendEmail] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [checkoutPlanId, setCheckoutPlanId] =
+    useState<PaidSubscriptionPlanId | null>(null);
+  const hasOverlayOpen =
+    sidebarOpen ||
+    showAddBorrower ||
+    showAddLoan ||
+    showAddRepayment ||
+    showEmailVerification ||
+    checkoutPlanId !== null;
 
   // Countdown timer for email resend cooldown
   useEffect(() => {
@@ -53,6 +69,19 @@ function App() {
       return () => clearTimeout(timer);
     }
   }, [resendCooldown]);
+
+  useEffect(() => {
+    setSidebarOpen(!isMobile);
+  }, [isMobile]);
+
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = hasOverlayOpen ? "hidden" : originalOverflow;
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [hasOverlayOpen]);
 
   // Load data from Supabase
   const loadData = async (userId: string) => {
@@ -216,20 +245,6 @@ function App() {
         setResendCooldown(60);
       }
 
-      // Create free subscription for new users
-      if (data.user) {
-        try {
-          await db.createSubscription({
-            user_id: data.user.id,
-            plan: "free",
-            status: "active",
-            billing_cycle: "monthly",
-            price: 0,
-          });
-        } catch (subError) {
-          console.log("Subscription might already exist:", subError);
-        }
-      }
       return data;
     } catch (error: any) {
       if (error.message !== "Rate limit exceeded") {
@@ -382,46 +397,44 @@ function App() {
     }
   };
 
-  const handleUpgradeSubscription = async (plan: string, price: number) => {
+  const handleSubscriptionChange = async (plan: SubscriptionPlanId) => {
     if (!user) return;
-    try {
-      const endDate = new Date();
-      endDate.setMonth(endDate.getMonth() + 1);
 
-      if (subscription) {
-        await db.updateSubscription(subscription.id, {
-          plan,
-          status: "active",
-          price,
-          end_date: endDate.toISOString(),
-        });
-      } else {
-        await db.createSubscription({
-          user_id: user.id,
-          plan,
-          status: "active",
-          billing_cycle: "monthly",
-          price,
-          end_date: endDate.toISOString(),
-        });
-      }
-      loadSubscription(user.id);
+    if (plan === "free") {
+      try {
+        const { data, error } = await supabase.functions.invoke(
+          "subscription-manage",
+          {
+            body: { plan: "free" },
+          },
+        );
 
-      if (price > 0 && paypalBusinessEmail) {
-        const paypalUrl = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(paypalBusinessEmail)}&item_name=${encodeURIComponent(`LendSmart_${plan}`)}&amount=${price}&currency_code=USD&return=${encodeURIComponent(window.location.origin)}&cancel_return=${encodeURIComponent(`${window.location.origin}/subscription`)}`;
-        alert(
-          `Successfully upgraded to ${plan} plan! Redirecting to PayPal...`,
-        );
-        window.open(paypalUrl, "_blank");
-      } else {
-        alert(
-          `Successfully updated to the ${plan} plan. Add VITE_PAYPAL_BUSINESS_EMAIL to enable live checkout.`,
-        );
+        if (error || !data?.subscription) {
+          throw error || new Error("Subscription update failed.");
+        }
+
+        setSubscription(data.subscription as Subscription);
+        alert("You are now on the Free plan.");
+      } catch (error) {
+        console.error("Error downgrading subscription:", error);
+        alert("Failed to switch to the Free plan.");
       }
-    } catch (error) {
-      console.error("Error upgrading subscription:", error);
-      alert("Failed to upgrade subscription");
+      return;
     }
+
+    const nextPlanId = plan;
+
+    if (!isPaidSubscriptionPlanId(nextPlanId)) {
+      alert("Unsupported subscription plan.");
+      return;
+    }
+
+    setCheckoutPlanId(nextPlanId);
+  };
+
+  const handleCheckoutSuccess = (nextSubscription: Subscription) => {
+    setSubscription(nextSubscription);
+    setCheckoutPlanId(null);
   };
 
   const handleResendVerification = async () => {
@@ -528,7 +541,7 @@ function App() {
         return (
           <SubscriptionPage
             currentPlan={subscription?.plan || "free"}
-            onUpgrade={handleUpgradeSubscription}
+            onUpgrade={handleSubscriptionChange}
           />
         );
       case "help":
@@ -553,7 +566,7 @@ function App() {
   };
 
   return (
-    <div className="flex max-h-screen min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gray-50">
       <Sidebar
         activeSection={activeSection}
         setActiveSection={setActiveSection}
@@ -568,8 +581,18 @@ function App() {
           onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
           user={user}
         />
-        <main className="flex-1 overflow-auto p-6">{renderContent()}</main>
+        <main className="flex-1 overflow-auto p-4 sm:p-6">
+          {renderContent()}
+        </main>
       </div>
+
+      {checkoutPlanId && (
+        <PayPalCheckoutModal
+          planId={checkoutPlanId}
+          onClose={() => setCheckoutPlanId(null)}
+          onSuccess={handleCheckoutSuccess}
+        />
+      )}
 
       {/* Email Verification Notice */}
       {showEmailVerification && user && !user.email_confirmed_at && (

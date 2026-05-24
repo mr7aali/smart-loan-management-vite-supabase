@@ -41,32 +41,32 @@ export default function EmailVerificationNotice({ email, onDismiss, onResend, co
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 relative animate-in fade-in zoom-in duration-300">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 sm:items-center">
+      <div className="relative w-full max-w-md animate-in rounded-2xl bg-white p-6 shadow-2xl fade-in zoom-in duration-300 sm:p-8">
         {/* Close button */}
         <button
           onClick={onDismiss}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+          className="absolute right-4 top-4 text-gray-400 transition-colors hover:text-gray-600"
         >
           <X className="w-5 h-5" />
         </button>
 
         {/* Icon */}
-        <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-6">
-          <Mail className="w-8 h-8 text-amber-600" />
+        <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 sm:h-16 sm:w-16">
+          <Mail className="h-7 w-7 text-amber-600 sm:h-8 sm:w-8" />
         </div>
 
         {/* Content */}
-        <h2 className="text-2xl font-bold text-gray-800 text-center mb-2">
+        <h2 className="mb-2 text-center text-xl font-bold text-gray-800 sm:text-2xl">
           Verify Your Email
         </h2>
-        <p className="text-gray-600 text-center mb-6">
+        <p className="mb-6 text-center text-gray-600">
           We've sent a verification link to:
         </p>
-        <p className="text-indigo-600 font-semibold text-center mb-6 bg-indigo-50 py-3 px-4 rounded-lg">
+        <p className="mb-6 break-all rounded-lg bg-indigo-50 px-4 py-3 text-center font-semibold text-indigo-600">
           {email}
         </p>
-        <p className="text-gray-500 text-center text-sm mb-4">
+        <p className="mb-4 text-center text-sm text-gray-500">
           Please check your inbox and click the verification link to activate your account.
           Don't forget to check your spam folder if you don't see the email.
         </p>

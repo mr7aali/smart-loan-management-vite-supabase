@@ -33,6 +33,7 @@ import {
   Bar,
   Legend,
 } from 'recharts';
+import { useIsMobile } from '../hooks/use-mobile';
 
 interface DashboardProps {
   borrowers: Borrower[];
@@ -44,6 +45,7 @@ const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444'];
 
 export default function Dashboard({ borrowers, loans, repayments }: DashboardProps) {
   const [animateCards, setAnimateCards] = useState(false);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     setAnimateCards(true);
@@ -196,13 +198,13 @@ export default function Dashboard({ borrowers, loans, repayments }: DashboardPro
   return (
     <div className="space-y-6">
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat, index) => {
           const Icon = stat.icon;
           return (
             <div
               key={stat.title}
-              className={`bg-white rounded-xl shadow-sm border border-gray-100 p-6 transition-all duration-500 ${
+              className={`rounded-xl border border-gray-100 bg-white p-5 shadow-sm transition-all duration-500 sm:p-6 ${
                 animateCards ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
               }`}
               style={{ transitionDelay: `${index * 100}ms` }}
@@ -222,7 +224,7 @@ export default function Dashboard({ borrowers, loans, repayments }: DashboardPro
                   {stat.change}
                 </div>
               </div>
-              <h3 className="text-2xl font-bold text-gray-800">{stat.value}</h3>
+              <h3 className="break-words text-2xl font-bold text-gray-800">{stat.value}</h3>
               <p className="text-gray-500 text-sm">{stat.title}</p>
             </div>
           );
@@ -230,12 +232,12 @@ export default function Dashboard({ borrowers, loans, repayments }: DashboardPro
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Portfolio Overview */}
-        <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center justify-between mb-6">
+        <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm sm:p-6 lg:col-span-2">
+          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-xl font-bold text-gray-800">Portfolio Overview</h2>
-            <select className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <select className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 sm:w-auto">
               <option>Last 30 days</option>
               <option>Last 90 days</option>
               <option>This year</option>
@@ -243,7 +245,7 @@ export default function Dashboard({ borrowers, loans, repayments }: DashboardPro
             </select>
           </div>
 
-          <div className="grid grid-cols-3 gap-6 mb-6">
+          <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-6">
             <div className="p-4 bg-gray-50 rounded-xl">
               <p className="text-sm text-gray-500 mb-1">Total Disbursed</p>
               <p className="text-2xl font-bold text-gray-800">{formatCurrency(totalDisbursed)}</p>
@@ -275,7 +277,7 @@ export default function Dashboard({ borrowers, loans, repayments }: DashboardPro
           </div>
 
           {/* Loan Status Breakdown */}
-          <div className="flex gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row">
             <div className="flex-1 p-4 bg-emerald-50 rounded-xl border border-emerald-100">
               <div className="flex items-center gap-2 mb-2">
                 <CheckCircle className="w-5 h-5 text-emerald-600" />
@@ -303,29 +305,29 @@ export default function Dashboard({ borrowers, loans, repayments }: DashboardPro
         </div>
 
         {/* Quick Stats */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm sm:p-6">
           <h2 className="text-xl font-bold text-gray-800 mb-6">Quick Stats</h2>
 
           <div className="space-y-4">
-            <div className="flex justify-between items-center p-4 bg-gray-50 rounded-xl">
+            <div className="flex flex-col gap-1 rounded-xl bg-gray-50 p-4 sm:flex-row sm:items-center sm:justify-between">
               <span className="text-gray-600">Avg. Loan Amount</span>
               <span className="font-bold text-gray-800">
                 {loans.length > 0 ? formatCurrency(totalDisbursed / loans.length) : '$0'}
               </span>
             </div>
-            <div className="flex justify-between items-center p-4 bg-gray-50 rounded-xl">
+            <div className="flex flex-col gap-1 rounded-xl bg-gray-50 p-4 sm:flex-row sm:items-center sm:justify-between">
               <span className="text-gray-600">Avg. Interest Rate</span>
               <span className="font-bold text-gray-800">
                 {avgInterestRate.toFixed(1)}%
               </span>
             </div>
-            <div className="flex justify-between items-center p-4 bg-gray-50 rounded-xl">
+            <div className="flex flex-col gap-1 rounded-xl bg-gray-50 p-4 sm:flex-row sm:items-center sm:justify-between">
               <span className="text-gray-600">This Month Repayments</span>
               <span className="font-bold text-emerald-600">
                 {formatCurrency(thisMonthRepayments)}
               </span>
             </div>
-            <div className="flex justify-between items-center p-4 bg-gray-50 rounded-xl">
+            <div className="flex flex-col gap-1 rounded-xl bg-gray-50 p-4 sm:flex-row sm:items-center sm:justify-between">
               <span className="text-gray-600">Interest Earned</span>
               <span className="font-bold text-purple-600">
                 {formatCurrency(totalCollected - totalDisbursed)}
@@ -336,9 +338,9 @@ export default function Dashboard({ borrowers, loans, repayments }: DashboardPro
       </div>
 
       {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Loan & Collection Trend */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm sm:p-6">
           <h2 className="text-xl font-bold text-gray-800 mb-6">Loan & Collection Trend</h2>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
@@ -366,14 +368,14 @@ export default function Dashboard({ borrowers, loans, repayments }: DashboardPro
                   fillOpacity={0.1}
                   strokeWidth={2}
                 />
-                <Legend />
+                {!isMobile && <Legend />}
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         {/* Loan Status Distribution */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm sm:p-6">
           <h2 className="text-xl font-bold text-gray-800 mb-6">Loan Status Distribution</h2>
           {loanStatusData.length > 0 ? (
             <div className="h-64">
@@ -383,11 +385,15 @@ export default function Dashboard({ borrowers, loans, repayments }: DashboardPro
                     data={loanStatusData}
                     cx="50%"
                     cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
+                    innerRadius={isMobile ? 45 : 60}
+                    outerRadius={isMobile ? 68 : 80}
                     paddingAngle={5}
                     dataKey="value"
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    label={
+                      isMobile
+                        ? undefined
+                        : ({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`
+                    }
                   >
                     {loanStatusData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -407,14 +413,14 @@ export default function Dashboard({ borrowers, loans, repayments }: DashboardPro
 
       {/* Top Borrowers Chart */}
       {topBorrowers.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm sm:p-6">
           <h2 className="text-xl font-bold text-gray-800 mb-6">Top Borrowers by Loan Amount</h2>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={topBorrowers} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis type="number" stroke="#9ca3af" fontSize={12} tickFormatter={(value) => `$${value / 1000}k`} />
-                <YAxis type="category" dataKey="name" stroke="#9ca3af" fontSize={12} width={100} />
+                <YAxis type="category" dataKey="name" stroke="#9ca3af" fontSize={12} width={isMobile ? 72 : 100} />
                 <Tooltip formatter={(value: number) => [formatCurrency(value), 'Total Loans']} />
                 <Bar dataKey="total" fill="#6366f1" radius={[0, 8, 8, 0]} />
               </BarChart>
@@ -424,12 +430,12 @@ export default function Dashboard({ borrowers, loans, repayments }: DashboardPro
       )}
 
       {/* Recent Activity & Upcoming */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Recent Loans */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center justify-between mb-6">
+        <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm sm:p-6">
+          <div className="mb-6 flex items-center justify-between gap-3">
             <h2 className="text-xl font-bold text-gray-800">Recent Loans</h2>
-            <button className="text-indigo-600 hover:text-indigo-700 font-medium text-sm">View All</button>
+            <button className="text-sm font-medium text-indigo-600 hover:text-indigo-700">View All</button>
           </div>
 
           {recentLoans.length === 0 ? (
@@ -447,7 +453,7 @@ export default function Dashboard({ borrowers, loans, repayments }: DashboardPro
                 const startDate = getLoanStartDate(loan);
 
                 return (
-                  <div key={loan.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                  <div key={loan.id} className="flex flex-col gap-3 rounded-xl bg-gray-50 p-4 transition-colors hover:bg-gray-100 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
                         {borrowerName.charAt(0).toUpperCase()}
@@ -457,7 +463,7 @@ export default function Dashboard({ borrowers, loans, repayments }: DashboardPro
                         <p className="text-sm text-gray-500">{formatDate(startDate)}</p>
                       </div>
                     </div>
-                    <div className="text-right">
+                    <div className="sm:text-right">
                       <p className="font-bold text-gray-800">{formatCurrency(getLoanAmount(loan))}</p>
                       <div className="flex items-center gap-2">
                         <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
@@ -479,8 +485,8 @@ export default function Dashboard({ borrowers, loans, repayments }: DashboardPro
         </div>
 
         {/* Upcoming Payments */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center justify-between mb-6">
+        <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm sm:p-6">
+          <div className="mb-6 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-xl font-bold text-gray-800">Upcoming Payments</h2>
             <span className="text-sm text-gray-500">Next 7 days</span>
           </div>
@@ -501,7 +507,7 @@ export default function Dashboard({ borrowers, loans, repayments }: DashboardPro
                 const daysUntilDue = Math.ceil((new Date(dueDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
 
                 return (
-                  <div key={loan.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                  <div key={loan.id} className="flex flex-col gap-3 rounded-xl bg-gray-50 p-4 transition-colors hover:bg-gray-100 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white font-bold text-sm">
                         {borrowerName.charAt(0).toUpperCase()}
@@ -511,7 +517,7 @@ export default function Dashboard({ borrowers, loans, repayments }: DashboardPro
                         <p className="text-sm text-gray-500">Due {formatDate(dueDate)}</p>
                       </div>
                     </div>
-                    <div className="text-right">
+                    <div className="sm:text-right">
                       <p className="font-bold text-amber-600">{formatCurrency(remaining)}</p>
                       <p className={`text-xs font-medium ${
                         daysUntilDue <= 1 ? 'text-red-500' : daysUntilDue <= 3 ? 'text-amber-500' : 'text-gray-500'

@@ -51,21 +51,21 @@ export default function AuthPage({ onSignIn, onSignUp }: AuthPageProps) {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-indigo-900 via-purple-900 to-indigo-950 p-4">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-indigo-900 via-purple-900 to-indigo-950 p-4 sm:p-6">
       <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg">
-            <Bird className="h-10 w-10 text-white" />
+        <div className="mb-6 text-center sm:mb-8">
+          <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg sm:h-16 sm:w-16">
+            <Bird className="h-8 w-8 text-white sm:h-10 sm:w-10" />
           </div>
-          <h1 className="mb-2 text-4xl font-bold text-white">LendSmart</h1>
-          <p className="text-indigo-200">
+          <h1 className="mb-2 text-3xl font-bold text-white sm:text-4xl">LendSmart</h1>
+          <p className="text-sm text-indigo-200 sm:text-base">
             Smart Loan Management for Modern Lenders
           </p>
         </div>
 
-        <div className="rounded-2xl bg-white p-8 shadow-2xl">
+        <div className="rounded-2xl bg-white p-6 shadow-2xl sm:p-8">
           <div className="mb-6 text-center">
-            <h2 className="text-2xl font-bold text-gray-800">
+            <h2 className="text-xl font-bold text-gray-800 sm:text-2xl">
               {isLogin ? "Welcome Back" : "Create Account"}
             </h2>
             <p className="mt-1 text-gray-500">

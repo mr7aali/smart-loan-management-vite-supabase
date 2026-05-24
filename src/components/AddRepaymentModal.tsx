@@ -76,14 +76,14 @@ export default function AddRepaymentModal({ loans, borrowers, onClose, onAdd }: 
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black bg-opacity-50 p-4 sm:items-center">
+      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white">
+        <div className="flex items-center justify-between border-b border-gray-200 p-4 sm:p-6">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center">
-              <DollarSign className="w-5 h-5 text-white" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 sm:h-10 sm:w-10">
+              <DollarSign className="h-5 w-5 text-white" />
             </div>
-            <h2 className="text-xl font-bold text-gray-800">Record Payment</h2>
+            <h2 className="text-lg font-bold text-gray-800 sm:text-xl">Record Payment</h2>
           </div>
           <button
             onClick={onClose}
@@ -93,7 +93,7 @@ export default function AddRepaymentModal({ loans, borrowers, onClose, onAdd }: 
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 p-4 sm:p-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Select Loan <span className="text-red-500">*</span>
@@ -183,7 +183,7 @@ export default function AddRepaymentModal({ loans, borrowers, onClose, onAdd }: 
                     key={method.value}
                     type="button"
                     onClick={() => handleChange('method', method.value)}
-                    className={`p-3 border rounded-lg text-center transition-colors ${
+                    className={`rounded-lg border p-2.5 text-center transition-colors sm:p-3 ${
                       formData.method === method.value
                         ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
                         : 'border-gray-200 hover:bg-gray-50'
@@ -208,7 +208,7 @@ export default function AddRepaymentModal({ loans, borrowers, onClose, onAdd }: 
             />
           </div>
 
-          <div className="flex gap-3 pt-4">
+          <div className="flex flex-col-reverse gap-3 pt-4 sm:flex-row">
             <button
               type="button"
               onClick={onClose}

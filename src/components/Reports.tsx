@@ -163,14 +163,14 @@ export default function Reports({ borrowers, loans, repayments }: ReportsProps) 
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-4">
         {reportTypes.map((report) => {
           const Icon = report.icon;
           return (
             <button
               key={report.id}
               onClick={() => setSelectedReport(report.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+              className={`flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2 transition-colors sm:w-auto ${
                 selectedReport === report.id
                   ? 'bg-indigo-600 text-white'
                   : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
@@ -183,21 +183,21 @@ export default function Reports({ borrowers, loans, repayments }: ReportsProps) 
         })}
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+      <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm sm:p-6">
         {selectedReport === 'portfolio' && (
           <>
-            <div className="flex items-center justify-between mb-6">
+            <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="text-xl font-bold text-gray-800">Portfolio Summary Report</h2>
               <button
                 onClick={handleExport}
-                className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-gray-100 px-4 py-2 text-gray-700 transition-colors hover:bg-gray-200 sm:w-auto"
               >
                 <Download className="w-4 h-4" />
                 Export CSV
               </button>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
+            <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 sm:gap-6">
               <div className="p-4 bg-gray-50 rounded-xl">
                 <p className="text-sm text-gray-500 mb-1">Total Disbursed</p>
                 <p className="text-2xl font-bold text-gray-800">{formatCurrency(totalDisbursed)}</p>
@@ -223,7 +223,7 @@ export default function Reports({ borrowers, loans, repayments }: ReportsProps) 
                 <h3 className="font-semibold text-gray-800 mb-4">Loan Status Distribution</h3>
                 <div className="space-y-4">
                   {statusDistribution.map((item) => (
-                    <div key={item.status} className="flex items-center gap-4">
+                    <div key={item.status} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
                       <div className={`w-4 h-4 rounded ${item.color}`}></div>
                       <div className="flex-1">
                         <div className="flex justify-between mb-1">
@@ -237,7 +237,7 @@ export default function Reports({ borrowers, loans, repayments }: ReportsProps) 
                           ></div>
                         </div>
                       </div>
-                      <span className="font-medium text-gray-800">{formatCurrency(item.amount)}</span>
+                      <span className="font-medium text-gray-800 sm:text-right">{formatCurrency(item.amount)}</span>
                     </div>
                   ))}
                 </div>
@@ -263,7 +263,7 @@ export default function Reports({ borrowers, loans, repayments }: ReportsProps) 
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-3">
               <div className="p-6 bg-gray-50 rounded-xl">
                 <p className="text-sm text-gray-500 mb-1">Average Interest Rate</p>
                 <p className="text-2xl font-bold text-gray-800">{avgInterestRate.toFixed(1)}%</p>
@@ -282,11 +282,11 @@ export default function Reports({ borrowers, loans, repayments }: ReportsProps) 
 
         {selectedReport === 'collection' && (
           <>
-            <div className="flex items-center justify-between mb-6">
+            <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="text-xl font-bold text-gray-800">Collection Report</h2>
               <button
                 onClick={handleExport}
-                className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-gray-100 px-4 py-2 text-gray-700 transition-colors hover:bg-gray-200 sm:w-auto"
               >
                 <Download className="w-4 h-4" />
                 Export CSV
@@ -294,7 +294,7 @@ export default function Reports({ borrowers, loans, repayments }: ReportsProps) 
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="min-w-[720px] w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Borrower</th>
@@ -337,11 +337,11 @@ export default function Reports({ borrowers, loans, repayments }: ReportsProps) 
 
         {selectedReport === 'borrowers' && (
           <>
-            <div className="flex items-center justify-between mb-6">
+            <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="text-xl font-bold text-gray-800">Borrower Report</h2>
               <button
                 onClick={handleExport}
-                className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-gray-100 px-4 py-2 text-gray-700 transition-colors hover:bg-gray-200 sm:w-auto"
               >
                 <Download className="w-4 h-4" />
                 Export CSV
@@ -350,7 +350,7 @@ export default function Reports({ borrowers, loans, repayments }: ReportsProps) 
 
             <div className="space-y-4">
               {topBorrowers.map((borrower, index) => (
-                <div key={borrower.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                <div key={borrower.id} className="flex flex-col gap-3 rounded-xl bg-gray-50 p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold">
                       #{index + 1}
@@ -360,7 +360,7 @@ export default function Reports({ borrowers, loans, repayments }: ReportsProps) 
                       <p className="text-sm text-gray-500">{borrower.phone}</p>
                     </div>
                   </div>
-                  <div className="text-right">
+                  <div className="sm:text-right">
                     <p className="font-semibold text-indigo-600">{formatCurrency(borrower.totalLoans)}</p>
                     <p className="text-sm text-gray-500">Total Borrowed</p>
                   </div>

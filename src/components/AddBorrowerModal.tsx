@@ -55,15 +55,15 @@ export default function AddBorrowerModal({ onClose, onAdd }: AddBorrowerModalPro
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black bg-opacity-50 p-4 sm:items-center">
+      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white sm:max-h-[90vh]">
         {/* Header */}
-        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+        <div className="flex items-center justify-between border-b border-gray-200 p-4 sm:p-6">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-              <User className="w-5 h-5 text-white" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 sm:h-10 sm:w-10">
+              <User className="h-5 w-5 text-white" />
             </div>
-            <h2 className="text-xl font-bold text-gray-800">Add New Borrower</h2>
+            <h2 className="text-lg font-bold text-gray-800 sm:text-xl">Add New Borrower</h2>
           </div>
           <button
             onClick={onClose}
@@ -74,7 +74,7 @@ export default function AddBorrowerModal({ onClose, onAdd }: AddBorrowerModalPro
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 p-4 sm:p-6">
           {/* Name */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -163,7 +163,7 @@ export default function AddBorrowerModal({ onClose, onAdd }: AddBorrowerModalPro
           </div>
 
           {/* Actions */}
-          <div className="flex gap-3 pt-4">
+          <div className="flex flex-col-reverse gap-3 pt-4 sm:flex-row">
             <button
               type="button"
               onClick={onClose}
