@@ -12,12 +12,14 @@ interface PayPalButtonStyle {
 }
 
 interface PayPalButtonsComponent {
+  isEligible?: () => boolean;
   render: (container: HTMLElement | string) => Promise<void>;
   close?: () => Promise<void> | void;
 }
 
 interface PayPalButtonsOptions {
   style?: PayPalButtonStyle;
+  fundingSource?: 'paypal' | 'paylater' | 'venmo' | 'credit' | 'card';
   createOrder: () => Promise<string> | string;
   onApprove?: (data: PayPalOrderData) => Promise<void> | void;
   onCancel?: () => void;

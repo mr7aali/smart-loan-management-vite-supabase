@@ -16,7 +16,7 @@ import AddRepaymentModal from "./components/AddRepaymentModal";
 import AuthPage from "./components/AuthPage";
 import SubscriptionPage from "./components/SubscriptionPage";
 import EmailVerificationNotice from "./components/EmailVerificationNotice";
-import PayPalCheckoutModal from "./components/PayPalCheckoutModal";
+import PayPalCheckoutPage from "./components/PayPalCheckoutPage";
 import { useIsMobile } from "./hooks/use-mobile";
 import { Borrower, Loan, Repayment, Subscription } from "./types";
 import {
@@ -31,11 +31,46 @@ import {
   normalizeRepayment,
 } from "./utils";
 
+function getPayPalCheckoutPlanIdFromUrl(): PaidSubscriptionPlanId | null {
+  const params = new URLSearchParams(window.location.search);
+
+  if (params.get("paypalCheckout") !== "1") {
+    return null;
+  }
+
+  const plan = params.get("plan");
+  if (!plan || !isPaidSubscriptionPlanId(plan as SubscriptionPlanId)) {
+    return null;
+  }
+
+  return plan as PaidSubscriptionPlanId;
+}
+
+function clearPayPalCheckoutUrlState() {
+  const url = new URL(window.location.href);
+  const checkoutParams = [
+    "paypalCheckout",
+    "plan",
+    "token",
+    "PayerID",
+    "ba_token",
+    "cancelled",
+  ];
+
+  for (const param of checkoutParams) {
+    url.searchParams.delete(param);
+  }
+
+  window.history.replaceState({}, document.title, url.toString());
+}
+
 function App() {
   const isMobile = useIsMobile();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeSection, setActiveSection] = useState("dashboard");
+  const [activeSection, setActiveSection] = useState(() =>
+    getPayPalCheckoutPlanIdFromUrl() ? "subscription" : "dashboard",
+  );
   const [borrowers, setBorrowers] = useState<Borrower[]>([]);
   const [loans, setLoans] = useState<Loan[]>([]);
   const [repayments, setRepayments] = useState<Repayment[]>([]);
@@ -48,14 +83,15 @@ function App() {
   const [canResendEmail, setCanResendEmail] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [checkoutPlanId, setCheckoutPlanId] =
-    useState<PaidSubscriptionPlanId | null>(null);
+    useState<PaidSubscriptionPlanId | null>(() =>
+      getPayPalCheckoutPlanIdFromUrl(),
+    );
   const hasOverlayOpen =
     sidebarOpen ||
     showAddBorrower ||
     showAddLoan ||
     showAddRepayment ||
-    showEmailVerification ||
-    checkoutPlanId !== null;
+    showEmailVerification;
 
   // Countdown timer for email resend cooldown
   useEffect(() => {
@@ -434,6 +470,7 @@ function App() {
 
   const handleCheckoutSuccess = (nextSubscription: Subscription) => {
     setSubscription(nextSubscription);
+    clearPayPalCheckoutUrlState();
     setCheckoutPlanId(null);
   };
 
@@ -538,7 +575,16 @@ function App() {
           />
         );
       case "subscription":
-        return (
+        return checkoutPlanId ? (
+          <PayPalCheckoutPage
+            planId={checkoutPlanId}
+            onBack={() => {
+              clearPayPalCheckoutUrlState();
+              setCheckoutPlanId(null);
+            }}
+            onSuccess={handleCheckoutSuccess}
+          />
+        ) : (
           <SubscriptionPage
             currentPlan={subscription?.plan || "free"}
             onUpgrade={handleSubscriptionChange}
@@ -566,7 +612,7 @@ function App() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex max-h-screen bg-gray-50">
       <Sidebar
         activeSection={activeSection}
         setActiveSection={setActiveSection}
@@ -585,15 +631,6 @@ function App() {
           {renderContent()}
         </main>
       </div>
-
-      {checkoutPlanId && (
-        <PayPalCheckoutModal
-          planId={checkoutPlanId}
-          onClose={() => setCheckoutPlanId(null)}
-          onSuccess={handleCheckoutSuccess}
-        />
-      )}
-
       {/* Email Verification Notice */}
       {showEmailVerification && user && !user.email_confirmed_at && (
         <EmailVerificationNotice
