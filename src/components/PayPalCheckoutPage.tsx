@@ -153,7 +153,6 @@ export default function PayPalCheckoutPage({
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   const plan = SUBSCRIPTION_PLANS_BY_ID[planId];
-  const includedFeatures = plan.features.slice(0, 4);
   const isBusy =
     checkoutStage === "creating_order" || checkoutStage === "capturing_payment";
   const isWaitingForApproval = checkoutStage === "awaiting_approval";
@@ -433,7 +432,7 @@ export default function PayPalCheckoutPage({
   }, [onSuccess, plan.id]);
 
   return (
-    <div className="mx-auto space-y-5">
+    <div className="mx-auto max-w-5xl space-y-5">
       <button
         type="button"
         onClick={onBack}
@@ -444,44 +443,41 @@ export default function PayPalCheckoutPage({
         Back to plans
       </button>
 
-      <div
-        className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_360px]"
-        style={{ border: "1px solid red" }}
-      >
-        <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-100 p-6 sm:p-8">
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
-                <ShieldCheck className="h-4 w-4" />
-                Secure payment
-              </div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">
-                {plan.name} plan
-              </div>
+      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-100 p-6 sm:p-8">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+              <ShieldCheck className="h-4 w-4" />
+              Secure payment
             </div>
-
-            <h2 className="mt-4 text-3xl font-semibold text-slate-900 sm:text-[2rem]">
-              Complete your subscription payment
-            </h2>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
-              Choose PayPal or an eligible debit or credit card option. Your
-              subscription activates only after the payment is verified on the
-              server.
-            </p>
-
-            <div className="mt-5 flex flex-wrap gap-3">
-              <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-700">
-                <Lock className="h-4 w-4 text-emerald-600" />
-                Encrypted checkout
-              </div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-700">
-                <CreditCard className="h-4 w-4 text-amber-600" />
-                PayPal and eligible cards
-              </div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">
+              {plan.name} plan
             </div>
           </div>
 
-          <div className="space-y-5 p-6 sm:p-8">
+          <h2 className="mt-4 text-3xl font-semibold text-slate-900 sm:text-[2rem]">
+            Complete your subscription payment
+          </h2>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
+            Choose PayPal or an eligible debit or credit card option. Your
+            subscription activates only after the payment is verified on the
+            server.
+          </p>
+
+          <div className="mt-5 flex flex-wrap gap-3">
+            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-700">
+              <Lock className="h-4 w-4 text-emerald-600" />
+              Encrypted checkout
+            </div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-700">
+              <CreditCard className="h-4 w-4 text-amber-600" />
+              PayPal and eligible cards
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-6 p-6 sm:p-8 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="space-y-5">
             {statusMessage && (
               <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
                 {isWaitingForApproval ? (
@@ -558,9 +554,7 @@ export default function PayPalCheckoutPage({
               </div>
             </div>
           </div>
-        </section>
 
-        <aside className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
           <div className="space-y-5">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
@@ -603,8 +597,8 @@ export default function PayPalCheckoutPage({
               </div>
             </div>
           </div>
-        </aside>
-      </div>
+        </div>
+      </section>
     </div>
   );
 }

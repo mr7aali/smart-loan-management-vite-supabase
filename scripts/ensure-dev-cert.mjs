@@ -45,47 +45,31 @@ $certificate = Get-ChildItem Cert:\\CurrentUser\\My |
   Select-Object -First 1
 
 if (-not $certificate) {
-  $certificate = New-SelfSignedCertificate `
-    -Subject $subject `
-    -FriendlyName $friendlyName `
-    -DnsName 'localhost', '127.0.0.1' `
-    -CertStoreLocation 'Cert:\\CurrentUser\\My' `
-    -HashAlgorithm 'SHA256' `
-    -KeyAlgorithm 'RSA' `
-    -KeyLength 2048 `
-    -KeyExportPolicy Exportable `
-    -NotAfter (Get-Date).AddYears(5)
+  $certificate = New-SelfSignedCertificate -Subject $subject -FriendlyName $friendlyName -DnsName 'localhost', '127.0.0.1' -CertStoreLocation 'Cert:\\CurrentUser\\My' -HashAlgorithm 'SHA256' -KeyAlgorithm 'RSA' -KeyLength 2048 -KeyExportPolicy Exportable -NotAfter (Get-Date).AddYears(5)
 }
 
 $rootCertificate = Get-ChildItem Cert:\\CurrentUser\\Root |
   Where-Object { $_.Thumbprint -eq $certificate.Thumbprint } |
   Select-Object -First 1
 
-if (-not $rootCertificate) {
-  $tempCerPath = Join-Path $certDir 'localhost-dev.cer'
+$tempCerPath = Join-Path $certDir 'localhost-dev.cer'
+if (-not (Test-Path -LiteralPath $tempCerPath)) {
   Export-Certificate -Cert $certificate -FilePath $tempCerPath -Force | Out-Null
-  Import-Certificate -FilePath $tempCerPath -CertStoreLocation 'Cert:\\CurrentUser\\Root' | Out-Null
+}
+
+if (-not $rootCertificate) {
+  certutil -user -f -addstore Root $tempCerPath | Out-Null
 }
 
 $securePassphrase = ConvertTo-SecureString -String $passphrase -AsPlainText -Force
-Export-PfxCertificate `
-  -Cert $certificate `
-  -FilePath $pfxPath `
-  -Password $securePassphrase `
-  -Force | Out-Null
+Export-PfxCertificate -Cert $certificate -FilePath $pfxPath -Password $securePassphrase -Force -ChainOption EndEntityCertOnly | Out-Null
 
 Set-Content -LiteralPath $passphrasePath -Value $passphrase -NoNewline
 `;
 
 const result = spawnSync(
   "powershell",
-  [
-    "-NoProfile",
-    "-ExecutionPolicy",
-    "Bypass",
-    "-Command",
-    command,
-  ],
+  ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", command],
   {
     cwd: process.cwd(),
     encoding: "utf8",
