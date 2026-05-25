@@ -439,7 +439,9 @@ function App() {
       if (error) throw error;
       setBorrowers((prev) => prev.filter((borrower) => borrower.id !== id));
       setLoans((prev) =>
-        prev.filter((loan) => loan.borrowerId !== id && loan.borrower_id !== id),
+        prev.filter(
+          (loan) => loan.borrowerId !== id && loan.borrower_id !== id,
+        ),
       );
     } catch (error) {
       console.error("Error deleting borrower:", error);
@@ -456,7 +458,9 @@ function App() {
       if (error) throw error;
       setLoans((prev) => prev.filter((loan) => loan.id !== id));
       setRepayments((prev) =>
-        prev.filter((repayment) => repayment.loanId !== id && repayment.loan_id !== id),
+        prev.filter(
+          (repayment) => repayment.loanId !== id && repayment.loan_id !== id,
+        ),
       );
     } catch (error) {
       console.error("Error deleting loan:", error);
@@ -562,7 +566,7 @@ function App() {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex max-h-screen bg-gray-50">
       <Sidebar
         activeSection={activeSection}
         setActiveSection={handleSectionChange}

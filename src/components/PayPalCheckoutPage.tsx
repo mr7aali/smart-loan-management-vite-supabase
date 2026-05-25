@@ -3,6 +3,7 @@ import {
   AlertCircle,
   ArrowLeft,
   CheckCircle2,
+  CreditCard,
   Lock,
   ShieldCheck,
 } from "lucide-react";
@@ -25,10 +26,13 @@ interface PayPalCheckoutPageProps {
   onSuccess: (subscription: Subscription) => void;
 }
 
-async function getFunctionErrorMessage(
-  error: unknown,
-  fallback: string,
-) {
+type CheckoutStage =
+  | "idle"
+  | "creating_order"
+  | "awaiting_approval"
+  | "capturing_payment";
+
+async function getFunctionErrorMessage(error: unknown, fallback: string) {
   if (error instanceof FunctionsHttpError) {
     try {
       const payload = await error.context.json();
@@ -62,6 +66,76 @@ async function getFunctionErrorMessage(
   return fallback;
 }
 
+function normalizeFundingSource(
+  fundingSource?: string | null,
+): PayPalFundingSource {
+  switch (fundingSource) {
+    case "card":
+    case "credit":
+    case "paylater":
+    case "paypal":
+    case "venmo":
+      return fundingSource;
+    default:
+      return "paypal";
+  }
+}
+
+function getFundingSourceLabel(fundingSource?: string | null) {
+  switch (normalizeFundingSource(fundingSource)) {
+    case "card":
+      return "Debit or credit card";
+    case "credit":
+      return "PayPal Credit";
+    case "paylater":
+      return "Pay Later";
+    case "venmo":
+      return "Venmo";
+    default:
+      return "PayPal";
+  }
+}
+
+function getCheckoutStatusMessage(
+  stage: Exclude<CheckoutStage, "idle">,
+  fundingSource?: string | null,
+) {
+  const normalizedFundingSource = normalizeFundingSource(fundingSource);
+
+  if (stage === "creating_order") {
+    return normalizedFundingSource === "card"
+      ? "Preparing the secure debit or credit card checkout window..."
+      : "Preparing the secure PayPal checkout window...";
+  }
+
+  if (stage === "awaiting_approval") {
+    return normalizedFundingSource === "card"
+      ? "Complete your debit or credit card details in the PayPal window to finish the payment."
+      : "Approve the payment in the PayPal window to continue.";
+  }
+
+  return normalizedFundingSource === "card"
+    ? "Finalizing your card payment and activating your subscription..."
+    : "Finalizing your PayPal payment and activating your subscription...";
+}
+
+function enablePayPalIframePermissions(container: HTMLElement) {
+  const iframes = container.querySelectorAll("iframe");
+
+  for (const iframe of iframes) {
+    const existingTokens = (iframe.getAttribute("allow") ?? "")
+      .split(";")
+      .map((token) => token.trim())
+      .filter(Boolean);
+    const nextTokens = new Set(existingTokens);
+
+    nextTokens.add("payment *");
+    nextTokens.add("unload *");
+
+    iframe.setAttribute("allow", Array.from(nextTokens).join("; "));
+  }
+}
+
 export default function PayPalCheckoutPage({
   planId,
   onBack,
@@ -70,12 +144,63 @@ export default function PayPalCheckoutPage({
   const paypalCurrency = import.meta.env.VITE_PAYPAL_CURRENCY || "USD";
   const hasHandledReturnRef = useRef(false);
   const buttonContainerRef = useRef<HTMLDivElement | null>(null);
-  const [processing, setProcessing] = useState(false);
+  const selectedFundingSourceRef = useRef<PayPalFundingSource | null>(null);
+  const [checkoutStage, setCheckoutStage] = useState<CheckoutStage>("idle");
+  const [selectedFundingSource, setSelectedFundingSource] =
+    useState<PayPalFundingSource | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sdkReady, setSdkReady] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   const plan = SUBSCRIPTION_PLANS_BY_ID[planId];
+  const includedFeatures = plan.features.slice(0, 4);
+  const isBusy =
+    checkoutStage === "creating_order" || checkoutStage === "capturing_payment";
+  const isWaitingForApproval = checkoutStage === "awaiting_approval";
+  const isCheckoutLocked = checkoutStage !== "idle";
+  const loadingOverlayTitle =
+    checkoutStage === "capturing_payment"
+      ? selectedFundingSource === "card"
+        ? "Finalizing card payment"
+        : "Finalizing PayPal payment"
+      : selectedFundingSource === "card"
+        ? "Preparing card checkout"
+        : "Preparing PayPal checkout";
+  const loadingOverlayDescription =
+    checkoutStage === "capturing_payment"
+      ? "Please wait while we verify the payment and update your subscription."
+      : "Please wait while we create your secure order.";
+
+  function setActiveFundingSource(fundingSource?: string | null) {
+    const normalizedFundingSource = normalizeFundingSource(
+      fundingSource ?? selectedFundingSourceRef.current,
+    );
+    selectedFundingSourceRef.current = normalizedFundingSource;
+    setSelectedFundingSource(normalizedFundingSource);
+    return normalizedFundingSource;
+  }
+
+  function setCheckoutProgress(
+    stage: Exclude<CheckoutStage, "idle">,
+    fundingSource?: string | null,
+    customMessage?: string,
+  ) {
+    const normalizedFundingSource = setActiveFundingSource(fundingSource);
+    setCheckoutStage(stage);
+    setStatusMessage(
+      customMessage ?? getCheckoutStatusMessage(stage, normalizedFundingSource),
+    );
+  }
+
+  function resetCheckoutProgress(preserveFundingSource = false) {
+    setCheckoutStage("idle");
+    setStatusMessage(null);
+
+    if (!preserveFundingSource) {
+      selectedFundingSourceRef.current = null;
+      setSelectedFundingSource(null);
+    }
+  }
 
   function buildCheckoutUrl(cancelled = false) {
     const url = new URL(window.location.href);
@@ -119,7 +244,9 @@ export default function PayPalCheckoutPage({
       .catch((sdkError) => {
         console.error("Failed to load PayPal SDK:", sdkError);
         if (active) {
-          setError("Unable to load PayPal checkout right now. Please try again.");
+          setError(
+            "Unable to load PayPal checkout right now. Please try again.",
+          );
         }
       });
 
@@ -135,10 +262,17 @@ export default function PayPalCheckoutPage({
 
     const container = buttonContainerRef.current;
     container.innerHTML = "";
+    const iframeObserver = new MutationObserver(() => {
+      enablePayPalIframePermissions(container);
+    });
+    iframeObserver.observe(container, {
+      childList: true,
+      subtree: true,
+    });
 
     const buttons = window.paypal.Buttons({
       style: {
-        color: "blue",
+        color: "gold",
         height: 48,
         label: "pay",
         layout: "vertical",
@@ -147,7 +281,8 @@ export default function PayPalCheckoutPage({
       },
       createOrder: async () => {
         setError(null);
-        setStatusMessage(null);
+        const fundingSource = setActiveFundingSource();
+        setCheckoutProgress("creating_order", fundingSource);
 
         const { data, error: invokeError } = await supabase.functions.invoke(
           "paypal-create-order",
@@ -167,14 +302,19 @@ export default function PayPalCheckoutPage({
             "Could not start the PayPal checkout. Please try again.",
           );
           setError(message);
+          resetCheckoutProgress(true);
           throw new Error("PayPal order creation failed.");
         }
 
+        setCheckoutProgress("awaiting_approval", fundingSource);
         return data.orderId as string;
       },
+      onClick: (data) => {
+        setError(null);
+        setCheckoutProgress("creating_order", data.fundingSource);
+      },
       onApprove: async (data) => {
-        setProcessing(true);
-        setStatusMessage("Finalizing your payment and updating your subscription...");
+        setCheckoutProgress("capturing_payment");
         setError(null);
 
         const { data: captureData, error: captureError } =
@@ -192,37 +332,52 @@ export default function PayPalCheckoutPage({
             "Payment approval succeeded, but final confirmation failed.",
           );
           setError(message);
-          setProcessing(false);
-          setStatusMessage(null);
+          resetCheckoutProgress(true);
           return;
         }
 
         onSuccess(captureData.subscription as Subscription);
       },
       onCancel: () => {
-        setProcessing(false);
-        setStatusMessage(null);
+        const fundingSourceLabel = getFundingSourceLabel(
+          selectedFundingSourceRef.current,
+        );
+        resetCheckoutProgress();
+        setError(
+          `${fundingSourceLabel} checkout was cancelled before payment approval.`,
+        );
       },
       onError: (paypalError) => {
         console.error("PayPal checkout error:", paypalError);
-        setProcessing(false);
-        setStatusMessage(null);
+        const fundingSourceLabel = getFundingSourceLabel(
+          selectedFundingSourceRef.current,
+        );
+        resetCheckoutProgress(true);
         const fallback =
           paypalError instanceof Error && paypalError.message.trim()
             ? paypalError.message
-            : "PayPal was unable to complete this payment. Please try again.";
+            : `${fundingSourceLabel} was unable to complete this payment. Please try again.`;
         setError((currentError) => currentError ?? fallback);
       },
     });
 
     if (buttons.isEligible && !buttons.isEligible()) {
-      setError("This PayPal button is not eligible for the current browser or account configuration.");
+      setError(
+        "This PayPal button is not eligible for the current browser or account configuration.",
+      );
       return undefined;
     }
 
-    void buttons.render(container);
+    void buttons.render(container).catch((renderError) => {
+      console.error("Failed to render PayPal buttons:", renderError);
+      setError(
+        "Unable to display payment methods right now. Please refresh and try again.",
+      );
+    });
+    enablePayPalIframePermissions(container);
 
     return () => {
+      iframeObserver.disconnect();
       container.innerHTML = "";
       void buttons.close?.();
     };
@@ -234,7 +389,8 @@ export default function PayPalCheckoutPage({
     const checkoutCancelled = searchParams.get("cancelled") === "1";
 
     if (checkoutCancelled) {
-      setError("PayPal checkout was cancelled before payment approval.");
+      resetCheckoutProgress();
+      setError("The payment window was cancelled before approval.");
       clearCheckoutStateFromUrl();
       return;
     }
@@ -244,8 +400,11 @@ export default function PayPalCheckoutPage({
     }
 
     hasHandledReturnRef.current = true;
-    setProcessing(true);
-    setStatusMessage("Confirming your PayPal payment...");
+    setCheckoutProgress(
+      "capturing_payment",
+      selectedFundingSourceRef.current,
+      "Confirming your payment and updating your subscription...",
+    );
     setError(null);
 
     void supabase.functions
@@ -263,8 +422,7 @@ export default function PayPalCheckoutPage({
             "Payment approval succeeded, but final confirmation failed.",
           );
           setError(message);
-          setProcessing(false);
-          setStatusMessage(null);
+          resetCheckoutProgress(true);
           clearCheckoutStateFromUrl();
           return;
         }
@@ -275,110 +433,70 @@ export default function PayPalCheckoutPage({
   }, [onSuccess, plan.id]);
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="mx-auto space-y-5">
       <button
         type="button"
         onClick={onBack}
-        disabled={processing}
-        className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:border-gray-300 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-60"
+        disabled={isCheckoutLocked}
+        className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
       >
         <ArrowLeft className="h-4 w-4" />
         Back to plans
       </button>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
-        <section className="overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white shadow-2xl">
-          <div className="space-y-6 p-6 sm:p-8 lg:p-10">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-indigo-100">
-              <ShieldCheck className="h-4 w-4" />
-              Secure Checkout
-            </div>
-
-            <div className="space-y-3">
-              <h2 className="text-3xl font-bold sm:text-4xl">
-                Complete your upgrade to {plan.name}
-              </h2>
-              <p className="max-w-2xl text-sm leading-6 text-slate-200 sm:text-base">
-                Your subscription is upgraded only after PayPal confirms the payment
-                on the server. No plan change is applied before capture succeeds.
-              </p>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-300">
-                  Plan
-                </p>
-                <p className="mt-2 text-2xl font-semibold">{plan.name}</p>
-                <p className="mt-1 text-sm text-slate-300">
-                  Monthly subscription
-                </p>
+      <div
+        className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_360px]"
+        style={{ border: "1px solid red" }}
+      >
+        <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-100 p-6 sm:p-8">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+                <ShieldCheck className="h-4 w-4" />
+                Secure payment
               </div>
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-300">
-                  Amount
-                </p>
-                <p className="mt-2 text-2xl font-semibold">
-                  ${plan.price}
-                  <span className="ml-2 text-sm font-medium text-slate-300">
-                    {paypalCurrency}
-                  </span>
-                </p>
-                <p className="mt-1 text-sm text-slate-300">
-                  Billed today
-                </p>
+              <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">
+                {plan.name} plan
               </div>
             </div>
 
-            <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4 text-sm text-emerald-50">
-              <div className="flex items-start gap-3">
-                <Lock className="mt-0.5 h-5 w-5 shrink-0 text-emerald-200" />
-                <div>
-                  <p className="font-semibold">Production-safe payment flow</p>
-                  <p className="mt-1 text-emerald-100/90">
-                    The order is created server-side, captured server-side, and your
-                    subscription is written only after PayPal confirms the payment.
-                  </p>
-                </div>
+            <h2 className="mt-4 text-3xl font-semibold text-slate-900 sm:text-[2rem]">
+              Complete your subscription payment
+            </h2>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
+              Choose PayPal or an eligible debit or credit card option. Your
+              subscription activates only after the payment is verified on the
+              server.
+            </p>
+
+            <div className="mt-5 flex flex-wrap gap-3">
+              <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-700">
+                <Lock className="h-4 w-4 text-emerald-600" />
+                Encrypted checkout
               </div>
-            </div>
-
-            <div className="rounded-2xl border border-amber-300/20 bg-amber-300/10 p-4 text-sm text-amber-50">
-              <p className="font-semibold">Testing tip</p>
-              <p className="mt-1 text-amber-100/90">
-                Use a buyer PayPal account for checkout. PayPal will block payments if
-                you log in with the same merchant account that receives the money.
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-100">
-              <p className="font-semibold">Funding sources on this checkout</p>
-              <p className="mt-1 text-slate-300">
-                Pay Later, Venmo, and PayPal Credit are disabled. If your PayPal
-                merchant account is eligible, the debit or credit card option can
-                still appear alongside the regular PayPal button.
-              </p>
+              <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-700">
+                <CreditCard className="h-4 w-4 text-amber-600" />
+                PayPal and eligible cards
+              </div>
             </div>
           </div>
-        </section>
 
-        <aside className="rounded-3xl border border-gray-100 bg-white p-6 shadow-xl sm:p-8">
-          <div className="space-y-5">
-            <div>
-              <p className="text-sm font-medium text-indigo-600">Pay with PayPal</p>
-              <h3 className="mt-2 text-2xl font-bold text-gray-900">
-                Finish payment
-              </h3>
-              <p className="mt-2 text-sm leading-6 text-gray-500">
-                Use PayPal or an eligible debit or credit card option shown by
-                PayPal for this checkout.
-              </p>
-            </div>
-
+          <div className="space-y-5 p-6 sm:p-8">
             {statusMessage && (
-              <div className="flex items-center gap-3 rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-sm text-emerald-700">
-                <CheckCircle2 className="h-5 w-5 shrink-0" />
-                <span>{statusMessage}</span>
+              <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                {isWaitingForApproval ? (
+                  <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+                ) : (
+                  <div className="mt-0.5 h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-amber-200 border-t-amber-600" />
+                )}
+                <div>
+                  <p className="font-semibold">
+                    {isWaitingForApproval
+                      ? "Continue in the PayPal window"
+                      : "Payment in progress"}
+                  </p>
+                  <p className="mt-1">{statusMessage}</p>
+                </div>
               </div>
             )}
 
@@ -389,20 +507,100 @@ export default function PayPalCheckoutPage({
               </div>
             )}
 
-            {!sdkReady && !error && (
-              <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
-                Loading PayPal checkout...
+            <div className="rounded-2xl border border-slate-200 bg-white p-4">
+              <div className="mb-4">
+                <p className="text-sm font-semibold text-slate-900">
+                  Pay with PayPal or card
+                </p>
+                <p className="mt-1 text-sm text-slate-500">
+                  Clicking a button opens PayPal&apos;s secure checkout for this
+                  payment.
+                </p>
               </div>
-            )}
 
-            <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
-              <div ref={buttonContainerRef} className="min-h-[48px]" />
+              <div
+                className="relative rounded-2xl border border-slate-200 bg-slate-50 p-4"
+                aria-busy={isCheckoutLocked || !sdkReady}
+              >
+                <div
+                  ref={buttonContainerRef}
+                  className={`min-h-[110px] transition-opacity ${
+                    isCheckoutLocked ? "pointer-events-none opacity-60" : ""
+                  } ${!sdkReady ? "opacity-0" : "opacity-100"}`}
+                />
+
+                {!sdkReady && !error && (
+                  <div className="absolute inset-4 flex flex-col justify-center gap-3 rounded-2xl bg-slate-50">
+                    <div className="h-5 w-40 animate-pulse rounded-full bg-slate-200" />
+                    <div className="h-12 animate-pulse rounded-2xl bg-slate-200" />
+                    <div className="h-12 animate-pulse rounded-2xl bg-slate-200" />
+                    <p className="text-sm text-slate-500">
+                      Loading available payment methods...
+                    </p>
+                  </div>
+                )}
+
+                {isBusy && (
+                  <div className="absolute inset-4 flex items-center justify-center rounded-2xl bg-white/85 backdrop-blur-sm">
+                    <div className="flex flex-col items-center gap-3 text-center">
+                      <div className="h-8 w-8 animate-spin rounded-full border-2 border-amber-200 border-t-amber-600" />
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">
+                          {loadingOverlayTitle}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {loadingOverlayDescription}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <aside className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+          <div className="space-y-5">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Order summary
+              </p>
+              <h3 className="mt-2 text-2xl font-semibold text-slate-900">
+                {plan.name}
+              </h3>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                Monthly subscription billed in {paypalCurrency}.
+              </p>
             </div>
 
-            <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4 text-xs leading-6 text-gray-500">
-              By continuing, you authorize this payment for the selected plan. Your
-              account will update only after the server verifies the capture amount,
-              user, and plan.
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">
+                Due today
+              </p>
+              <p className="mt-3 text-4xl font-semibold text-slate-900">
+                ${plan.price}
+              </p>
+              <p className="mt-2 text-sm text-slate-600">
+                {paypalCurrency} / month
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 p-5">
+              <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-3 text-sm">
+                <span className="text-slate-500">Plan</span>
+                <span className="font-medium text-slate-900">{plan.name}</span>
+              </div>
+              <div className="flex items-center justify-between gap-4 border-b border-slate-100 py-3 text-sm">
+                <span className="text-slate-500">Billing cycle</span>
+                <span className="font-medium text-slate-900">Monthly</span>
+              </div>
+              <div className="flex items-center justify-between gap-4 pt-3 text-sm">
+                <span className="text-slate-500">Activation</span>
+                <span className="font-medium text-slate-900">
+                  After payment confirmation
+                </span>
+              </div>
             </div>
           </div>
         </aside>

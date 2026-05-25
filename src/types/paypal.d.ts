@@ -17,11 +17,28 @@ interface PayPalButtonsComponent {
   close?: () => Promise<void> | void;
 }
 
+interface PayPalButtonsData {
+  fundingSource?: PayPalFundingSource;
+}
+
+interface PayPalButtonsActions {
+  disable?: () => void;
+  enable?: () => void;
+}
+
 interface PayPalButtonsOptions {
   style?: PayPalButtonStyle;
-  fundingSource?: 'paypal' | 'paylater' | 'venmo' | 'credit' | 'card';
+  fundingSource?: PayPalFundingSource;
   createOrder: () => Promise<string> | string;
   onApprove?: (data: PayPalOrderData) => Promise<void> | void;
+  onClick?: (
+    data: PayPalButtonsData,
+    actions: PayPalButtonsActions,
+  ) => Promise<void> | void;
+  onInit?: (
+    data: PayPalButtonsData,
+    actions: PayPalButtonsActions,
+  ) => Promise<void> | void;
   onCancel?: () => void;
   onError?: (error: unknown) => void;
 }
@@ -31,6 +48,13 @@ interface PayPalNamespace {
 }
 
 declare global {
+  type PayPalFundingSource =
+    | 'paypal'
+    | 'paylater'
+    | 'venmo'
+    | 'credit'
+    | 'card';
+
   interface Window {
     paypal?: PayPalNamespace;
   }
