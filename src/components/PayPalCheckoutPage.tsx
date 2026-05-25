@@ -79,21 +79,11 @@ export default function PayPalCheckoutPage({
 
   function buildCheckoutUrl(cancelled = false) {
     const url = new URL(window.location.href);
-    const checkoutParams = [
-      "paypalCheckout",
-      "plan",
-      "token",
-      "PayerID",
-      "ba_token",
-      "cancelled",
-    ];
+    const checkoutParams = ["token", "PayerID", "ba_token", "cancelled"];
 
     for (const param of checkoutParams) {
       url.searchParams.delete(param);
     }
-
-    url.searchParams.set("paypalCheckout", "1");
-    url.searchParams.set("plan", plan.id);
 
     if (cancelled) {
       url.searchParams.set("cancelled", "1");
@@ -104,14 +94,7 @@ export default function PayPalCheckoutPage({
 
   function clearCheckoutStateFromUrl() {
     const url = new URL(window.location.href);
-    const checkoutParams = [
-      "paypalCheckout",
-      "plan",
-      "token",
-      "PayerID",
-      "ba_token",
-      "cancelled",
-    ];
+    const checkoutParams = ["token", "PayerID", "ba_token", "cancelled"];
 
     for (const param of checkoutParams) {
       url.searchParams.delete(param);
@@ -247,13 +230,8 @@ export default function PayPalCheckoutPage({
 
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
-    const returnedPlan = searchParams.get("plan");
     const orderId = searchParams.get("token");
     const checkoutCancelled = searchParams.get("cancelled") === "1";
-
-    if (returnedPlan !== plan.id) {
-      return;
-    }
 
     if (checkoutCancelled) {
       setError("PayPal checkout was cancelled before payment approval.");

@@ -1,5 +1,13 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { User } from "@supabase/supabase-js";
+import {
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+  useParams,
+} from "react-router-dom";
 import { supabase, auth, db } from "./lib/supabase";
 import Dashboard from "./components/Dashboard";
 import Borrowers from "./components/Borrowers";
@@ -31,46 +39,78 @@ import {
   normalizeRepayment,
 } from "./utils";
 
-function getPayPalCheckoutPlanIdFromUrl(): PaidSubscriptionPlanId | null {
-  const params = new URLSearchParams(window.location.search);
+const APP_SECTIONS = [
+  "dashboard",
+  "borrowers",
+  "loans",
+  "repayments",
+  "reports",
+  "subscription",
+  "help",
+  "settings",
+] as const;
 
-  if (params.get("paypalCheckout") !== "1") {
-    return null;
-  }
+type AppSection = (typeof APP_SECTIONS)[number];
 
-  const plan = params.get("plan");
-  if (!plan || !isPaidSubscriptionPlanId(plan as SubscriptionPlanId)) {
-    return null;
-  }
+const SECTION_ROUTES: Record<AppSection, string> = {
+  dashboard: "/dashboard",
+  borrowers: "/borrowers",
+  loans: "/loans",
+  repayments: "/repayments",
+  reports: "/reports",
+  subscription: "/subscription",
+  help: "/help",
+  settings: "/settings",
+};
 
-  return plan as PaidSubscriptionPlanId;
+function isAppSection(value: string | null): value is AppSection {
+  return value !== null && APP_SECTIONS.includes(value as AppSection);
 }
 
-function clearPayPalCheckoutUrlState() {
-  const url = new URL(window.location.href);
-  const checkoutParams = [
-    "paypalCheckout",
-    "plan",
-    "token",
-    "PayerID",
-    "ba_token",
-    "cancelled",
-  ];
+function getSectionFromPathname(pathname: string): AppSection {
+  const [, firstSegment] = pathname.split("/");
 
-  for (const param of checkoutParams) {
-    url.searchParams.delete(param);
+  if (firstSegment === "subscription") {
+    return "subscription";
   }
 
-  window.history.replaceState({}, document.title, url.toString());
+  if (isAppSection(firstSegment)) {
+    return firstSegment;
+  }
+
+  return "dashboard";
+}
+
+interface SubscriptionCheckoutRouteProps {
+  onBack: () => void;
+  onSuccess: (subscription: Subscription) => void;
+}
+
+function SubscriptionCheckoutRoute({
+  onBack,
+  onSuccess,
+}: SubscriptionCheckoutRouteProps) {
+  const { planId } = useParams<{ planId: string }>();
+
+  if (!planId || !isPaidSubscriptionPlanId(planId as SubscriptionPlanId)) {
+    return <Navigate to="/subscription" replace />;
+  }
+
+  return (
+    <PayPalCheckoutPage
+      planId={planId as PaidSubscriptionPlanId}
+      onBack={onBack}
+      onSuccess={onSuccess}
+    />
+  );
 }
 
 function App() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeSection, setActiveSection] = useState(() =>
-    getPayPalCheckoutPlanIdFromUrl() ? "subscription" : "dashboard",
-  );
   const [borrowers, setBorrowers] = useState<Borrower[]>([]);
   const [loans, setLoans] = useState<Loan[]>([]);
   const [repayments, setRepayments] = useState<Repayment[]>([]);
@@ -82,10 +122,7 @@ function App() {
   const [showEmailVerification, setShowEmailVerification] = useState(false);
   const [canResendEmail, setCanResendEmail] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
-  const [checkoutPlanId, setCheckoutPlanId] =
-    useState<PaidSubscriptionPlanId | null>(() =>
-      getPayPalCheckoutPlanIdFromUrl(),
-    );
+  const activeSection = getSectionFromPathname(location.pathname);
   const hasOverlayOpen =
     sidebarOpen ||
     showAddBorrower ||
@@ -93,7 +130,6 @@ function App() {
     showAddRepayment ||
     showEmailVerification;
 
-  // Countdown timer for email resend cooldown
   useEffect(() => {
     if (resendCooldown > 0) {
       const timer = setTimeout(() => {
@@ -119,7 +155,6 @@ function App() {
     };
   }, [hasOverlayOpen]);
 
-  // Load data from Supabase
   const loadData = async (userId: string) => {
     try {
       const [borrowersResult, loansResult, repaymentsResult] =
@@ -143,36 +178,31 @@ function App() {
   };
 
   useEffect(() => {
-    // Check for email confirmation in URL
     const urlParams = new URLSearchParams(window.location.search);
     if (
       urlParams.get("type") === "signup" ||
       urlParams.get("confirmation") === "true"
     ) {
-      // Email confirmation detected
       window.history.replaceState({}, document.title, window.location.pathname);
     }
 
-    // Check current user
     auth.getCurrentUser().then((currentUser) => {
       setUser(currentUser);
       if (currentUser) {
-        loadData(currentUser.id);
-        loadSubscription(currentUser.id);
+        void loadData(currentUser.id);
+        void loadSubscription(currentUser.id);
       }
       setLoading(false);
     });
 
-    // Listen for auth changes
     const {
-      data: { subscription },
+      data: { subscription: authSubscription },
     } = auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        loadData(session.user.id);
-        loadSubscription(session.user.id);
+        void loadData(session.user.id);
+        void loadSubscription(session.user.id);
 
-        // Check if user just signed up (email not confirmed)
         if (event === "SIGNED_IN" && session.user.email_confirmed_at === null) {
           setShowEmailVerification(true);
           setCanResendEmail(false);
@@ -187,7 +217,7 @@ function App() {
     });
 
     return () => {
-      subscription.unsubscribe();
+      authSubscription.unsubscribe();
     };
   }, []);
 
@@ -195,8 +225,8 @@ function App() {
     if (!user?.id) return;
 
     const refreshUserData = () => {
-      loadData(user.id);
-      loadSubscription(user.id);
+      void loadData(user.id);
+      void loadSubscription(user.id);
     };
 
     const borrowersChannel = supabase
@@ -262,7 +292,6 @@ function App() {
     try {
       const { data, error } = await auth.signUp(email, password, name);
 
-      // Handle rate limit error specifically
       if (
         error?.message?.includes("rate") ||
         error?.message?.includes("429") ||
@@ -273,10 +302,8 @@ function App() {
 
       if (error) throw error;
 
-      // Show email verification notice for new users
       if (data.user && !data.user.email_confirmed_at) {
         setShowEmailVerification(true);
-        // Start cooldown for resend button
         setCanResendEmail(false);
         setResendCooldown(60);
       }
@@ -298,6 +325,7 @@ function App() {
     setRepayments([]);
     setSubscription(null);
     setShowEmailVerification(false);
+    navigate("/dashboard", { replace: true });
   };
 
   const handleAddBorrower = async (borrower: Omit<Borrower, "id">) => {
@@ -402,14 +430,16 @@ function App() {
       !confirm(
         "Are you sure you want to delete this borrower? All associated loans will also be deleted.",
       )
-    )
+    ) {
       return;
+    }
+
     try {
       const { error } = await db.deleteBorrower(id);
       if (error) throw error;
-      setBorrowers((prev) => prev.filter((b) => b.id !== id));
+      setBorrowers((prev) => prev.filter((borrower) => borrower.id !== id));
       setLoans((prev) =>
-        prev.filter((l) => l.borrowerId !== id && l.borrower_id !== id),
+        prev.filter((loan) => loan.borrowerId !== id && loan.borrower_id !== id),
       );
     } catch (error) {
       console.error("Error deleting borrower:", error);
@@ -420,12 +450,13 @@ function App() {
   const handleDeleteLoan = async (id: string) => {
     if (!user) return;
     if (!confirm("Are you sure you want to delete this loan?")) return;
+
     try {
       const { error } = await db.deleteLoan(id);
       if (error) throw error;
-      setLoans((prev) => prev.filter((l) => l.id !== id));
+      setLoans((prev) => prev.filter((loan) => loan.id !== id));
       setRepayments((prev) =>
-        prev.filter((r) => r.loanId !== id && r.loan_id !== id),
+        prev.filter((repayment) => repayment.loanId !== id && repayment.loan_id !== id),
       );
     } catch (error) {
       console.error("Error deleting loan:", error);
@@ -450,6 +481,7 @@ function App() {
         }
 
         setSubscription(data.subscription as Subscription);
+        navigate("/subscription", { replace: true });
         alert("You are now on the Free plan.");
       } catch (error) {
         console.error("Error downgrading subscription:", error);
@@ -458,20 +490,17 @@ function App() {
       return;
     }
 
-    const nextPlanId = plan;
-
-    if (!isPaidSubscriptionPlanId(nextPlanId)) {
+    if (!isPaidSubscriptionPlanId(plan)) {
       alert("Unsupported subscription plan.");
       return;
     }
 
-    setCheckoutPlanId(nextPlanId);
+    navigate(`/subscription/checkout/${plan}`);
   };
 
   const handleCheckoutSuccess = (nextSubscription: Subscription) => {
     setSubscription(nextSubscription);
-    clearPayPalCheckoutUrlState();
-    setCheckoutPlanId(null);
+    navigate("/subscription", { replace: true });
   };
 
   const handleResendVerification = async () => {
@@ -503,7 +532,6 @@ function App() {
       }
 
       alert("Verification email sent! Please check your inbox.");
-      // Start cooldown after successful resend
       setResendCooldown(60);
     } catch (error) {
       console.error("Error resending verification:", error);
@@ -511,6 +539,14 @@ function App() {
         ? error
         : new Error("Failed to resend verification email.");
     }
+  };
+
+  const handleSectionChange = (section: string) => {
+    if (!isAppSection(section)) {
+      return;
+    }
+
+    navigate(SECTION_ROUTES[section]);
   };
 
   if (loading) {
@@ -525,97 +561,11 @@ function App() {
     return <AuthPage onSignIn={handleSignIn} onSignUp={handleSignUp} />;
   }
 
-  const renderContent = () => {
-    switch (activeSection) {
-      case "dashboard":
-        return (
-          <Dashboard
-            borrowers={borrowers}
-            loans={loans}
-            repayments={repayments}
-          />
-        );
-      case "borrowers":
-        return (
-          <Borrowers
-            borrowers={borrowers}
-            loans={loans}
-            repayments={repayments}
-            onAdd={() => setShowAddBorrower(true)}
-            onDelete={handleDeleteBorrower}
-            onSelect={() => {}}
-          />
-        );
-      case "loans":
-        return (
-          <Loans
-            loans={loans}
-            borrowers={borrowers}
-            repayments={repayments}
-            onAdd={() => setShowAddLoan(true)}
-            onDelete={handleDeleteLoan}
-            onSelect={() => {}}
-          />
-        );
-      case "repayments":
-        return (
-          <Repayments
-            repayments={repayments}
-            loans={loans}
-            borrowers={borrowers}
-            onAdd={() => setShowAddRepayment(true)}
-          />
-        );
-      case "reports":
-        return (
-          <Reports
-            borrowers={borrowers}
-            loans={loans}
-            repayments={repayments}
-          />
-        );
-      case "subscription":
-        return checkoutPlanId ? (
-          <PayPalCheckoutPage
-            planId={checkoutPlanId}
-            onBack={() => {
-              clearPayPalCheckoutUrlState();
-              setCheckoutPlanId(null);
-            }}
-            onSuccess={handleCheckoutSuccess}
-          />
-        ) : (
-          <SubscriptionPage
-            currentPlan={subscription?.plan || "free"}
-            onUpgrade={handleSubscriptionChange}
-          />
-        );
-      case "help":
-        return <Help />;
-      case "settings":
-        return (
-          <Settings
-            user={user}
-            onSignOut={handleSignOut}
-            subscription={subscription}
-          />
-        );
-      default:
-        return (
-          <Dashboard
-            borrowers={borrowers}
-            loans={loans}
-            repayments={repayments}
-          />
-        );
-    }
-  };
-
   return (
-    <div className="flex max-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gray-50">
       <Sidebar
         activeSection={activeSection}
-        setActiveSection={setActiveSection}
+        setActiveSection={handleSectionChange}
         isOpen={sidebarOpen}
         setIsOpen={setSidebarOpen}
         user={user}
@@ -628,10 +578,99 @@ function App() {
           user={user}
         />
         <main className="flex-1 overflow-auto p-4 sm:p-6">
-          {renderContent()}
+          <Routes>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route
+              path="/dashboard"
+              element={
+                <Dashboard
+                  borrowers={borrowers}
+                  loans={loans}
+                  repayments={repayments}
+                />
+              }
+            />
+            <Route
+              path="/borrowers"
+              element={
+                <Borrowers
+                  borrowers={borrowers}
+                  loans={loans}
+                  repayments={repayments}
+                  onAdd={() => setShowAddBorrower(true)}
+                  onDelete={handleDeleteBorrower}
+                  onSelect={() => {}}
+                />
+              }
+            />
+            <Route
+              path="/loans"
+              element={
+                <Loans
+                  loans={loans}
+                  borrowers={borrowers}
+                  repayments={repayments}
+                  onAdd={() => setShowAddLoan(true)}
+                  onDelete={handleDeleteLoan}
+                  onSelect={() => {}}
+                />
+              }
+            />
+            <Route
+              path="/repayments"
+              element={
+                <Repayments
+                  repayments={repayments}
+                  loans={loans}
+                  borrowers={borrowers}
+                  onAdd={() => setShowAddRepayment(true)}
+                />
+              }
+            />
+            <Route
+              path="/reports"
+              element={
+                <Reports
+                  borrowers={borrowers}
+                  loans={loans}
+                  repayments={repayments}
+                />
+              }
+            />
+            <Route
+              path="/subscription"
+              element={
+                <SubscriptionPage
+                  currentPlan={subscription?.plan || "free"}
+                  onUpgrade={handleSubscriptionChange}
+                />
+              }
+            />
+            <Route
+              path="/subscription/checkout/:planId"
+              element={
+                <SubscriptionCheckoutRoute
+                  onBack={() => navigate("/subscription")}
+                  onSuccess={handleCheckoutSuccess}
+                />
+              }
+            />
+            <Route path="/help" element={<Help />} />
+            <Route
+              path="/settings"
+              element={
+                <Settings
+                  user={user}
+                  onSignOut={handleSignOut}
+                  subscription={subscription}
+                />
+              }
+            />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
         </main>
       </div>
-      {/* Email Verification Notice */}
+
       {showEmailVerification && user && !user.email_confirmed_at && (
         <EmailVerificationNotice
           email={user.email || ""}
@@ -658,7 +697,7 @@ function App() {
 
       {showAddRepayment && (
         <AddRepaymentModal
-          loans={loans.filter((l) => l.status === "active")}
+          loans={loans.filter((loan) => loan.status === "active")}
           borrowers={borrowers}
           onClose={() => setShowAddRepayment(false)}
           onAdd={handleAddRepayment}

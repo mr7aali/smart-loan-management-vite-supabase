@@ -17,6 +17,7 @@ export default function Header({ title, onToggleSidebar, user }: HeaderProps) {
       reports: 'Reports',
       settings: 'Settings',
       subscription: 'Subscription',
+      help: 'Help',
     };
     return titles[section] || section.charAt(0).toUpperCase() + section.slice(1);
   };
