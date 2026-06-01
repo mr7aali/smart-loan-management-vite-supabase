@@ -4,11 +4,13 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "predev": "node scripts/ensure-dev-cert.mjs",
+    "dev": "vite --host localhost",
     "build": "tsc -b && vite build",
     "build:prod": "tsc -b && vite build --mode prod",
     "lint": "eslint .",
-    "preview": "vite preview",
+    "prepreview": "node scripts/ensure-dev-cert.mjs",
+    "preview": "vite preview --host localhost",
     "install-deps": "npm install",
     "clean": "rm -rf node_modules .pnpm-store pnpm-lock.yaml && pnpm store prune"
   },

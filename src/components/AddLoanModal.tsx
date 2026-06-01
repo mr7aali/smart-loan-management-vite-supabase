@@ -74,15 +74,15 @@ export default function AddLoanModal({ borrowers, onClose, onAdd }: AddLoanModal
   const totalPayable = calculateTotalPayable(amount, rate, months);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black bg-opacity-50 p-4 sm:items-center">
+      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white">
         {/* Header */}
-        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+        <div className="flex items-center justify-between border-b border-gray-200 p-4 sm:p-6">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-              <FileText className="w-5 h-5 text-white" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 sm:h-10 sm:w-10">
+              <FileText className="h-5 w-5 text-white" />
             </div>
-            <h2 className="text-xl font-bold text-gray-800">Create New Loan</h2>
+            <h2 className="text-lg font-bold text-gray-800 sm:text-xl">Create New Loan</h2>
           </div>
           <button
             onClick={onClose}
@@ -93,7 +93,7 @@ export default function AddLoanModal({ borrowers, onClose, onAdd }: AddLoanModal
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 p-4 sm:p-6">
           {/* Borrower */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -139,7 +139,7 @@ export default function AddLoanModal({ borrowers, onClose, onAdd }: AddLoanModal
           </div>
 
           {/* Interest Rate & Term */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Interest Rate (%) <span className="text-red-500">*</span>
@@ -213,7 +213,7 @@ export default function AddLoanModal({ borrowers, onClose, onAdd }: AddLoanModal
           {amount > 0 && rate > 0 && months > 0 && (
             <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100">
               <h4 className="font-semibold text-indigo-800 mb-3">Loan Summary</h4>
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
                 <div>
                   <p className="text-indigo-600">Monthly EMI</p>
                   <p className="font-bold text-indigo-900">${emi.toFixed(2)}</p>
@@ -237,7 +237,7 @@ export default function AddLoanModal({ borrowers, onClose, onAdd }: AddLoanModal
           )}
 
           {/* Actions */}
-          <div className="flex gap-3 pt-4">
+          <div className="flex flex-col-reverse gap-3 pt-4 sm:flex-row">
             <button
               type="button"
               onClick={onClose}

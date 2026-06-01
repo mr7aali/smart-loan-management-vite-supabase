@@ -1,50 +1,76 @@
-import { Repayment, Loan } from '../types';
-import { formatCurrency, formatDate, getBorrowerById } from '../utils';
-import { Plus, Search, DollarSign, Calendar, CreditCard, ArrowUpRight } from 'lucide-react';
+import { Repayment, Loan, Borrower } from '../types';
+import {
+  formatCurrency,
+  formatDate,
+  getBorrowerById,
+  getBorrowerName,
+  getLoanBorrowerId,
+  getRepaymentLoanId,
+} from '../utils';
+import {
+  Plus,
+  Search,
+  DollarSign,
+  Calendar,
+  ArrowUpRight,
+  Banknote,
+  Landmark,
+  Smartphone,
+  ReceiptText,
+} from 'lucide-react';
 import { useState } from 'react';
 
 interface RepaymentsProps {
   repayments: Repayment[];
   loans: Loan[];
+  borrowers: Borrower[];
   onAdd: () => void;
 }
 
-export default function Repayments({ repayments, loans, onAdd }: RepaymentsProps) {
+const methodMeta = {
+  cash: { label: 'Cash', icon: Banknote },
+  bank_transfer: { label: 'Bank Transfer', icon: Landmark },
+  upi: { label: 'UPI', icon: Smartphone },
+  other: { label: 'Other', icon: ReceiptText },
+} as const;
+
+export default function Repayments({ repayments, loans, borrowers, onAdd }: RepaymentsProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [methodFilter, setMethodFilter] = useState('all');
 
-  const filteredRepayments = repayments.filter(repayment => {
-    const loan = loans.find(l => l.id === repayment.loanId);
-    const borrower = loan ? getBorrowerById([], loan.borrowerId) : null;
-    const matchesSearch = borrower?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      repayment.id.includes(searchTerm);
+  const filteredRepayments = repayments.filter((repayment) => {
+    const loan = loans.find((item) => item.id === getRepaymentLoanId(repayment));
+    const borrower =
+      loan?.borrowers ||
+      (loan ? getBorrowerById(borrowers, getLoanBorrowerId(loan)) : undefined);
+    const borrowerName = getBorrowerName(borrower).toLowerCase();
+    const normalizedSearch = searchTerm.toLowerCase();
+    const matchesSearch =
+      !normalizedSearch ||
+      borrowerName.includes(normalizedSearch) ||
+      loan?.id.toLowerCase().includes(normalizedSearch) ||
+      repayment.id.toLowerCase().includes(normalizedSearch) ||
+      repayment.notes?.toLowerCase().includes(normalizedSearch);
     const matchesMethod = methodFilter === 'all' || repayment.method === methodFilter;
     return matchesSearch && matchesMethod;
   });
 
-  // Sort by date descending (most recent first)
   const sortedRepayments = [...filteredRepayments].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   );
 
-  const totalCollected = filteredRepayments.reduce((sum, r) => sum + r.amount, 0);
-  const thisMonth = repayments.filter(r => {
-    const date = new Date(r.date);
-    const now = new Date();
-    return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
-  }).reduce((sum, r) => sum + r.amount, 0);
-
-  const methodIcons: Record<string, React.ReactNode> = {
-    cash: '$',
-    bank_transfer: '🏦',
-    upi: '📱',
-    other: '📋',
-  };
+  const totalCollected = filteredRepayments.reduce((sum, repayment) => sum + repayment.amount, 0);
+  const thisMonth = repayments
+    .filter((repayment) => {
+      const date = new Date(repayment.date);
+      const now = new Date();
+      return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+    })
+    .reduce((sum, repayment) => sum + repayment.amount, 0);
 
   return (
     <div className="space-y-6">
-      {/* Stats Row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-3">
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center">
@@ -82,9 +108,8 @@ export default function Repayments({ repayments, loans, onAdd }: RepaymentsProps
         </div>
       </div>
 
-      {/* Actions Bar */}
-      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-        <div className="flex flex-1 gap-4 items-center">
+      <div className="flex flex-col items-stretch justify-between gap-4 sm:flex-row sm:items-center">
+        <div className="flex flex-1 flex-col gap-4 sm:flex-row sm:items-center">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
@@ -98,7 +123,7 @@ export default function Repayments({ repayments, loans, onAdd }: RepaymentsProps
           <select
             value={methodFilter}
             onChange={(e) => setMethodFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full rounded-lg border border-gray-200 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 sm:w-auto"
           >
             <option value="all">All Methods</option>
             <option value="cash">Cash</option>
@@ -109,14 +134,13 @@ export default function Repayments({ repayments, loans, onAdd }: RepaymentsProps
         </div>
         <button
           onClick={onAdd}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-white transition-colors hover:bg-indigo-700 sm:w-auto"
         >
           <Plus className="w-4 h-4" />
           Record Payment
         </button>
       </div>
 
-      {/* Repayments List */}
       {sortedRepayments.length === 0 ? (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
           <DollarSign className="w-16 h-16 mx-auto mb-4 text-gray-300" />
@@ -138,10 +162,11 @@ export default function Repayments({ repayments, loans, onAdd }: RepaymentsProps
       ) : (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="min-w-[760px] w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Date</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Borrower</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Loan ID</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Amount</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Method</th>
@@ -150,7 +175,14 @@ export default function Repayments({ repayments, loans, onAdd }: RepaymentsProps
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {sortedRepayments.map((repayment) => {
-                  const loan = loans.find(l => l.id === repayment.loanId);
+                  const loan = loans.find((item) => item.id === getRepaymentLoanId(repayment));
+                  const borrower =
+                    loan?.borrowers ||
+                    (loan ? getBorrowerById(borrowers, getLoanBorrowerId(loan)) : undefined);
+                  const borrowerName = getBorrowerName(borrower);
+                  const MethodIcon = methodMeta[repayment.method]?.icon || ReceiptText;
+                  const methodLabel = methodMeta[repayment.method]?.label || 'Other';
+
                   return (
                     <tr key={repayment.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4">
@@ -162,6 +194,9 @@ export default function Repayments({ repayments, loans, onAdd }: RepaymentsProps
                         </div>
                       </td>
                       <td className="px-6 py-4">
+                        <span className="font-medium text-gray-800">{borrowerName}</span>
+                      </td>
+                      <td className="px-6 py-4">
                         <span className="text-sm text-gray-500">#{loan?.id.slice(-6) || 'Unknown'}</span>
                       </td>
                       <td className="px-6 py-4">
@@ -169,8 +204,8 @@ export default function Repayments({ repayments, loans, onAdd }: RepaymentsProps
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
-                          <span className="text-lg">{methodIcons[repayment.method] || '📋'}</span>
-                          <span className="text-sm text-gray-600 capitalize">{repayment.method.replace('_', ' ')}</span>
+                          <MethodIcon className="w-4 h-4 text-gray-500" />
+                          <span className="text-sm text-gray-600">{methodLabel}</span>
                         </div>
                       </td>
                       <td className="px-6 py-4">

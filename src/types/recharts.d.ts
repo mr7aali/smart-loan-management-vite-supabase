@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-namespace */
 declare module 'recharts' {
   import { ComponentType } from 'react';
 
@@ -55,7 +54,7 @@ declare module 'recharts' {
     radius?: number[];
   }
 
-  export interface LegendProps {}
+  export type LegendProps = Record<string, never>;
 
   export interface CartesianGridProps {
     strokeDasharray?: string;

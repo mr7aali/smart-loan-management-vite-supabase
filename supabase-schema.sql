@@ -76,6 +76,7 @@ CREATE INDEX IF NOT EXISTS idx_loans_borrower_id ON loans(borrower_id);
 CREATE INDEX IF NOT EXISTS idx_repayments_user_id ON repayments(user_id);
 CREATE INDEX IF NOT EXISTS idx_repayments_loan_id ON repayments(loan_id);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON subscriptions(user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_subscriptions_user_unique ON subscriptions(user_id);
 
 -- Enable Row Level Security (RLS)
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
@@ -138,24 +139,40 @@ CREATE POLICY "Users can delete own repayments" ON repayments
 CREATE POLICY "Users can view own subscription" ON subscriptions
   FOR SELECT USING (auth.uid() = user_id);
 
-CREATE POLICY "Users can insert own subscription" ON subscriptions
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can update own subscription" ON subscriptions
-  FOR UPDATE USING (auth.uid() = user_id);
-
 -- Create function to handle new user signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
   INSERT INTO public.profiles (id, email, full_name)
-  VALUES (NEW.id, NEW.email, NEW.raw_user_meta_data->>'full_name');
+  VALUES (NEW.id, NEW.email, NEW.raw_user_meta_data->>'full_name')
+  ON CONFLICT (id) DO UPDATE
+    SET email = EXCLUDED.email,
+        full_name = COALESCE(EXCLUDED.full_name, public.profiles.full_name),
+        updated_at = NOW();
+
+  INSERT INTO public.subscriptions (user_id, plan, status, billing_cycle, price)
+  VALUES (NEW.id, 'free', 'active', 'monthly', 0)
+  ON CONFLICT (user_id) DO NOTHING;
+
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- Trigger to auto-create profile on signup
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- Backfill free subscriptions for existing users that do not already have one
+INSERT INTO public.subscriptions (user_id, plan, status, billing_cycle, price)
+SELECT
+  auth_user.id,
+  'free',
+  'active',
+  'monthly',
+  0
+FROM auth.users AS auth_user
+LEFT JOIN public.subscriptions AS existing_subscription
+  ON existing_subscription.user_id = auth_user.id
+WHERE existing_subscription.user_id IS NULL;

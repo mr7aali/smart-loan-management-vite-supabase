@@ -1,50 +1,44 @@
-# React + TypeScript + Vite
+# LendSmart
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+LendSmart is a React, Vite, and Supabase app for managing borrowers, loans, repayments, reports, and subscription upgrades.
 
-Currently, two official plugins are available:
+## Development
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
-
-- Configure the top-level `parserOptions` property like this:
-
-```js
-export default tseslint.config({
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+```powershell
+npm install
+npm run dev
 ```
 
-- Replace `tseslint.configs.recommended` to `tseslint.configs.recommendedTypeChecked` or `tseslint.configs.strictTypeChecked`
-- Optionally add `...tseslint.configs.stylisticTypeChecked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and update the config:
+The app serves locally on `http://localhost:5173`.
 
-```js
-// eslint.config.js
-import react from 'eslint-plugin-react'
+## Frontend Environment
 
-export default tseslint.config({
-  // Set the react version
-  settings: { react: { version: '18.3' } },
-  plugins: {
-    // Add the react plugin
-    react,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended rules
-    ...react.configs.recommended.rules,
-    ...react.configs['jsx-runtime'].rules,
-  },
-})
+```env
+VITE_SUPABASE_URL=...
+VITE_SUPABASE_ANON_KEY=...
+VITE_PAYPAL_CLIENT_ID=...
+VITE_PAYPAL_CURRENCY=USD
 ```
+
+## Supabase Edge Function Secrets
+
+```env
+PAYPAL_CLIENT_ID=...
+PAYPAL_CLIENT_SECRET=...
+PAYPAL_ENV=live
+SUPABASE_SERVICE_ROLE_KEY=...
+```
+
+If you are using PayPal sandbox credentials, set `PAYPAL_ENV=sandbox` and make sure both the frontend `VITE_PAYPAL_CLIENT_ID` and the server-side PayPal secrets come from the same sandbox app. Do not mix live and sandbox credentials.
+
+## PayPal Checkout Setup
+
+1. Apply `supabase-schema.sql` on a fresh project, or run `supabase/migrations/20260525_paypal_subscription_security.sql` on an existing one.
+2. Deploy the Supabase Edge Functions in `supabase/functions/`:
+   `paypal-create-order`
+   `paypal-capture-order`
+   `subscription-manage`
+3. Add the PayPal and Supabase secrets in your Supabase project.
+4. Set `VITE_PAYPAL_CLIENT_ID` in the frontend environment and redeploy the app.
+
+Paid plans now activate only after the server confirms a successful PayPal capture.
