@@ -75,7 +75,9 @@ export default function AdminUsersPage({
   onUpdateUser,
 }: AdminUsersPageProps) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | AccountStatus>("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | AccountStatus>(
+    "all",
+  );
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [role, setRole] = useState<UserRole>("user");
   const [accountStatus, setAccountStatus] = useState<AccountStatus>("active");
@@ -140,31 +142,6 @@ export default function AdminUsersPage({
 
   return (
     <div className="space-y-6">
-      <section className="overflow-hidden rounded-[28px] bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.2),_transparent_35%),linear-gradient(135deg,#111827,#1d4ed8_48%,#0f766e)] p-6 text-white shadow-xl sm:p-8">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-2xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-cyan-100/80">
-              User Management
-            </p>
-            <h2 className="mt-3 text-3xl font-bold sm:text-4xl">
-              Review access, update plans, and keep subscriptions healthy.
-            </h2>
-            <p className="mt-3 max-w-xl text-sm text-indigo-100 sm:text-base">
-              Search any account, inspect payment history, and adjust role or subscription state from one focused workspace.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onRefresh}
-            disabled={loading}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white/15 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-            Refresh users
-          </button>
-        </div>
-      </section>
-
       <section className="grid gap-6 xl:grid-cols-[0.95fr_1.25fr]">
         <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -174,7 +151,7 @@ export default function AdminUsersPage({
                 {filteredUsers.length} of {users.length} users visible
               </p>
             </div>
-            <div className="inline-flex rounded-2xl bg-slate-100 p-1">
+            <div className="inline-flex p-1 rounded-2xl bg-slate-100">
               {(["all", "active", "suspended"] as const).map((filter) => (
                 <button
                   key={filter}
@@ -193,19 +170,19 @@ export default function AdminUsersPage({
           </div>
 
           <div className="relative mt-5">
-            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search className="absolute w-4 h-4 -translate-y-1/2 pointer-events-none left-4 top-1/2 text-slate-400" />
             <input
               type="text"
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
               placeholder="Search by name or email"
-              className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-11 pr-4 text-sm text-slate-700 outline-none transition focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
+              className="w-full py-3 pr-4 text-sm transition border outline-none rounded-2xl border-slate-200 bg-slate-50 pl-11 text-slate-700 focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
             />
           </div>
 
           <div className="mt-5 space-y-3">
             {filteredUsers.length === 0 ? (
-              <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-10 text-center text-sm text-slate-500">
+              <div className="p-10 text-sm text-center border border-dashed rounded-3xl border-slate-200 bg-slate-50 text-slate-500">
                 No users match your current search or status filter.
               </div>
             ) : (
@@ -222,10 +199,10 @@ export default function AdminUsersPage({
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="truncate font-semibold text-slate-900">
+                      <p className="font-semibold truncate text-slate-900">
                         {user.name}
                       </p>
-                      <p className="truncate text-sm text-slate-500">
+                      <p className="text-sm truncate text-slate-500">
                         {user.email}
                       </p>
                     </div>
@@ -235,7 +212,7 @@ export default function AdminUsersPage({
                       {user.role}
                     </span>
                   </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2 mt-3">
                     <span
                       className={`rounded-full px-2.5 py-1 text-xs font-medium capitalize ${getStatusTone(
                         user.accountStatus,
@@ -262,7 +239,7 @@ export default function AdminUsersPage({
 
         <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
           {!selectedUser ? (
-            <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-10 text-center text-sm text-slate-500">
+            <div className="p-10 text-sm text-center border border-dashed rounded-3xl border-slate-200 bg-slate-50 text-slate-500">
               Select a user to manage access, plan, and subscription validity.
             </div>
           ) : (
@@ -275,7 +252,9 @@ export default function AdminUsersPage({
                   <h3 className="mt-2 text-2xl font-bold text-slate-900">
                     {selectedUser.name}
                   </h3>
-                  <p className="mt-1 text-sm text-slate-500">{selectedUser.email}</p>
+                  <p className="mt-1 text-sm text-slate-500">
+                    {selectedUser.email}
+                  </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <span
@@ -312,7 +291,9 @@ export default function AdminUsersPage({
                   },
                   {
                     label: "Lifetime paid",
-                    value: moneyFormatter.format(selectedUser.payments.totalAmount),
+                    value: moneyFormatter.format(
+                      selectedUser.payments.totalAmount,
+                    ),
                     icon: CreditCard,
                   },
                   {
@@ -325,11 +306,11 @@ export default function AdminUsersPage({
                   return (
                     <div
                       key={item.label}
-                      className="rounded-3xl border border-slate-200 bg-slate-50 p-4"
+                      className="p-4 border rounded-3xl border-slate-200 bg-slate-50"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-indigo-600 shadow-sm">
-                          <Icon className="h-5 w-5" />
+                        <div className="flex items-center justify-center text-indigo-600 bg-white shadow-sm h-11 w-11 rounded-2xl">
+                          <Icon className="w-5 h-5" />
                         </div>
                         <div>
                           <p className="text-xs uppercase tracking-[0.18em] text-slate-400">
@@ -346,10 +327,10 @@ export default function AdminUsersPage({
               </div>
 
               <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+                <div className="p-5 border rounded-3xl border-slate-200 bg-slate-50">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-indigo-600 shadow-sm">
-                      <UserCog className="h-5 w-5" />
+                    <div className="flex items-center justify-center w-12 h-12 text-indigo-600 bg-white shadow-sm rounded-2xl">
+                      <UserCog className="w-5 h-5" />
                     </div>
                     <div>
                       <h4 className="font-semibold text-slate-900">
@@ -380,8 +361,8 @@ export default function AdminUsersPage({
                       </dt>
                       <dd className="mt-1 text-sm text-slate-700">
                         Borrowers:{" "}
-                        {selectedUser.limits.maxBorrowers ?? "Unlimited"} | Loans:{" "}
-                        {selectedUser.limits.maxLoans ?? "Unlimited"}
+                        {selectedUser.limits.maxBorrowers ?? "Unlimited"} |
+                        Loans: {selectedUser.limits.maxLoans ?? "Unlimited"}
                       </dd>
                     </div>
                     <div>
@@ -389,27 +370,31 @@ export default function AdminUsersPage({
                         Payment activity
                       </dt>
                       <dd className="mt-1 text-sm text-slate-700">
-                        {selectedUser.payments.totalCount} successful payments recorded
+                        {selectedUser.payments.totalCount} successful payments
+                        recorded
                       </dd>
                     </div>
                   </dl>
                 </div>
 
-                <div className="rounded-3xl border border-slate-200 bg-white p-5">
+                <div className="p-5 bg-white border rounded-3xl border-slate-200">
                   <h4 className="text-lg font-semibold text-slate-900">
                     Manage access and subscription
                   </h4>
                   <p className="mt-1 text-sm text-slate-500">
-                    Changes save directly to the user profile and subscription record.
+                    Changes save directly to the user profile and subscription
+                    record.
                   </p>
 
-                  <div className="mt-5 grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-4 mt-5 md:grid-cols-2">
                     <label className="space-y-2 text-sm">
                       <span className="font-medium text-slate-700">Role</span>
                       <select
                         value={role}
-                        onChange={(event) => setRole(event.target.value as UserRole)}
-                        className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-700 outline-none transition focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
+                        onChange={(event) =>
+                          setRole(event.target.value as UserRole)
+                        }
+                        className="w-full px-4 py-3 transition border outline-none rounded-2xl border-slate-200 bg-slate-50 text-slate-700 focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
                       >
                         <option value="user">User</option>
                         <option value="admin">Admin</option>
@@ -425,7 +410,7 @@ export default function AdminUsersPage({
                         onChange={(event) =>
                           setAccountStatus(event.target.value as AccountStatus)
                         }
-                        className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-700 outline-none transition focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
+                        className="w-full px-4 py-3 transition border outline-none rounded-2xl border-slate-200 bg-slate-50 text-slate-700 focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
                       >
                         <option value="active">Active</option>
                         <option value="suspended">Suspended</option>
@@ -439,7 +424,7 @@ export default function AdminUsersPage({
                         onChange={(event) =>
                           setPlan(event.target.value as Subscription["plan"])
                         }
-                        className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-700 outline-none transition focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
+                        className="w-full px-4 py-3 transition border outline-none rounded-2xl border-slate-200 bg-slate-50 text-slate-700 focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
                       >
                         <option value="free">Free</option>
                         <option value="starter">Starter</option>
@@ -459,7 +444,7 @@ export default function AdminUsersPage({
                             event.target.value as Subscription["status"],
                           )
                         }
-                        className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-700 outline-none transition focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
+                        className="w-full px-4 py-3 transition border outline-none rounded-2xl border-slate-200 bg-slate-50 text-slate-700 focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
                       >
                         <option value="active">Active</option>
                         <option value="cancelled">Cancelled</option>
@@ -475,22 +460,23 @@ export default function AdminUsersPage({
                         type="date"
                         value={endDate}
                         onChange={(event) => setEndDate(event.target.value)}
-                        className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-700 outline-none transition focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
+                        className="w-full px-4 py-3 transition border outline-none rounded-2xl border-slate-200 bg-slate-50 text-slate-700 focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
                       />
                     </label>
                   </div>
 
-                  <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex flex-col gap-3 mt-6 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-sm text-slate-500">
-                      Save applies the new role, access status, plan, and validity date.
+                      Save applies the new role, access status, plan, and
+                      validity date.
                     </p>
                     <button
                       type="button"
                       onClick={handleSave}
                       disabled={saving || loading}
-                      className="inline-flex items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="inline-flex items-center justify-center gap-2 px-5 py-3 text-sm font-semibold text-white transition bg-indigo-600 rounded-2xl hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      <ShieldCheck className="h-4 w-4" />
+                      <ShieldCheck className="w-4 h-4" />
                       {saving ? "Saving..." : "Save changes"}
                     </button>
                   </div>
