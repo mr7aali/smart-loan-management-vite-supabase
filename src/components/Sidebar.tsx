@@ -1,6 +1,7 @@
 import {
   LayoutDashboard,
   Users,
+  UserCog,
   FileText,
   DollarSign,
   BarChart3,
@@ -10,6 +11,7 @@ import {
   CreditCard,
   HelpCircle,
   LogOut,
+  ShieldCheck,
 } from "lucide-react";
 import { User } from "@supabase/supabase-js";
 import { useIsMobile } from "../hooks/use-mobile";
@@ -21,6 +23,7 @@ interface SidebarProps {
   setIsOpen: (isOpen: boolean) => void;
   user?: User | null;
   onSignOut?: () => void;
+  isAdmin?: boolean;
 }
 
 const menuItems = [
@@ -40,6 +43,7 @@ export default function Sidebar({
   setIsOpen,
   user,
   onSignOut,
+  isAdmin = false,
 }: SidebarProps) {
   const isMobile = useIsMobile();
 
@@ -57,6 +61,10 @@ export default function Sidebar({
   };
 
   const showLabels = isMobile || isOpen;
+  const adminMenuItems = [
+    { id: "admin-overview", label: "Platform", icon: ShieldCheck },
+    { id: "admin-users", label: "User Management", icon: UserCog },
+  ];
   const asideClasses = isMobile
     ? `fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] transform bg-gradient-to-b from-indigo-900 to-indigo-950 text-white transition-transform duration-300 ${
         isOpen ? "translate-x-0" : "-translate-x-full"
@@ -121,6 +129,33 @@ export default function Sidebar({
               </button>
             );
           })}
+
+          {isAdmin && showLabels && (
+            <div className="px-4 pb-2 pt-5">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-indigo-300">
+                Admin
+              </p>
+            </div>
+          )}
+
+          {isAdmin &&
+            adminMenuItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleSectionChange(item.id)}
+                  className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors ${
+                    activeSection === item.id
+                      ? "bg-amber-500 font-semibold text-indigo-950"
+                      : "hover:bg-indigo-800"
+                  } ${!showLabels ? "justify-center px-2" : ""}`}
+                >
+                  <Icon className="w-5 h-5 shrink-0" />
+                  {showLabels && <span>{item.label}</span>}
+                </button>
+              );
+            })}
         </nav>
 
         <div className="p-4 space-y-2 border-t border-indigo-800">

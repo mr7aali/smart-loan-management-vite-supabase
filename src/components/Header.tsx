@@ -30,6 +30,8 @@ export default function Header({
       settings: "Settings",
       subscription: "Subscription",
       help: "Help",
+      "admin-overview": "Platform Overview",
+      "admin-users": "User Management",
     };
     return (
       titles[section] || section.charAt(0).toUpperCase() + section.slice(1)

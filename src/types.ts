@@ -64,3 +64,121 @@ export interface Subscription {
   end_date?: string;
   created_at?: string;
 }
+
+export type UserRole = "user" | "admin";
+export type AccountStatus = "active" | "suspended";
+
+export interface UserProfile {
+  id: string;
+  email: string | null;
+  full_name?: string | null;
+  phone?: string | null;
+  role: UserRole;
+  account_status: AccountStatus;
+  plan: Subscription["plan"];
+  max_borrowers?: number | null;
+  max_loans?: number | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface PaymentRecord {
+  id: string;
+  user_id: string;
+  provider: "paypal";
+  provider_order_id?: string | null;
+  provider_capture_id?: string | null;
+  subscription_plan: Subscription["plan"];
+  amount: number;
+  currency: string;
+  status: "pending" | "completed" | "failed" | "refunded";
+  paid_at: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface AdminOverviewStats {
+  totalUsers: number;
+  adminUsers: number;
+  activeSubscriptions: number;
+  monthlyRevenue: number;
+  completedPayments: number;
+  expiringSoon: number;
+}
+
+export interface AdminOverviewPayment {
+  id: string;
+  userId: string;
+  name: string;
+  email: string;
+  amount: number;
+  currency: string;
+  status: PaymentRecord["status"];
+  plan: Subscription["plan"];
+  paidAt: string;
+  captureId?: string | null;
+}
+
+export interface AdminExpiringSubscription {
+  userId: string;
+  name: string;
+  email: string;
+  plan: Subscription["plan"];
+  status: Subscription["status"];
+  endDate: string | null;
+  daysRemaining: number | null;
+}
+
+export interface AdminPlanDistributionItem {
+  plan: Subscription["plan"];
+  users: number;
+}
+
+export interface AdminNewestUser {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  accountStatus: AccountStatus;
+  joinedAt: string;
+}
+
+export interface AdminOverviewData {
+  stats: AdminOverviewStats;
+  recentPayments: AdminOverviewPayment[];
+  expiringSubscriptions: AdminExpiringSubscription[];
+  planDistribution: AdminPlanDistributionItem[];
+  newestUsers: AdminNewestUser[];
+}
+
+export interface AdminManagedUser {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string | null;
+  role: UserRole;
+  accountStatus: AccountStatus;
+  joinedAt: string;
+  plan: Subscription["plan"];
+  limits: {
+    maxBorrowers: number | null;
+    maxLoans: number | null;
+  };
+  subscription: {
+    plan: Subscription["plan"];
+    status: Subscription["status"];
+    billingCycle: Subscription["billing_cycle"];
+    price: number;
+    startDate?: string | null;
+    endDate?: string | null;
+    updatedAt?: string | null;
+  } | null;
+  payments: {
+    totalCount: number;
+    totalAmount: number;
+    lastPaidAt?: string | null;
+    lastAmount?: number | null;
+    currency: string;
+    lastPlan?: Subscription["plan"] | null;
+  };
+}
