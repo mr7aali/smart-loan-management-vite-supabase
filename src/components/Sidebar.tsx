@@ -1,6 +1,7 @@
 import {
   LayoutDashboard,
   Users,
+  UserCog,
   FileText,
   DollarSign,
   BarChart3,
@@ -8,9 +9,9 @@ import {
   ChevronLeft,
   ChevronRight,
   CreditCard,
-  Sparkles,
   HelpCircle,
   LogOut,
+  ShieldCheck,
 } from "lucide-react";
 import { User } from "@supabase/supabase-js";
 import { useIsMobile } from "../hooks/use-mobile";
@@ -22,6 +23,7 @@ interface SidebarProps {
   setIsOpen: (isOpen: boolean) => void;
   user?: User | null;
   onSignOut?: () => void;
+  isAdmin?: boolean;
 }
 
 const menuItems = [
@@ -41,6 +43,7 @@ export default function Sidebar({
   setIsOpen,
   user,
   onSignOut,
+  isAdmin = false,
 }: SidebarProps) {
   const isMobile = useIsMobile();
 
@@ -58,6 +61,10 @@ export default function Sidebar({
   };
 
   const showLabels = isMobile || isOpen;
+  const adminMenuItems = [
+    { id: "admin-overview", label: "Platform", icon: ShieldCheck },
+    { id: "admin-users", label: "User Management", icon: UserCog },
+  ];
   const asideClasses = isMobile
     ? `fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] transform bg-gradient-to-b from-indigo-900 to-indigo-950 text-white transition-transform duration-300 ${
         isOpen ? "translate-x-0" : "-translate-x-full"
@@ -78,24 +85,28 @@ export default function Sidebar({
       )}
 
       <aside className={`${asideClasses} ${isMobile ? "" : "flex flex-col"}`}>
-        <div className="flex items-center justify-between border-b border-indigo-800 p-4">
+        <div className="flex items-center justify-between p-4 border-b border-indigo-800">
           {showLabels && (
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 to-orange-500">
-              <Sparkles className="h-5 w-5 text-white" />
+            <div className="flex items-center gap-2">
+              <div className="flex items-center justify-center w-10 h-10 p-1 bg-white rounded-lg shadow-sm">
+                <img
+                  src="/images/logo.png"
+                  alt="LendSmart logo"
+                  className="object-contain w-full h-full"
+                />
+              </div>
+              <span className="text-xl font-bold">LendSmart</span>
             </div>
-            <span className="text-xl font-bold">LendSmart</span>
-          </div>
           )}
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className="rounded-lg p-2 transition-colors hover:bg-indigo-800"
+            className="p-2 transition-colors rounded-lg hover:bg-indigo-800"
             aria-label={isOpen ? "Collapse navigation" : "Expand navigation"}
           >
             {isOpen || isMobile ? (
-              <ChevronLeft className="h-5 w-5" />
+              <ChevronLeft className="w-5 h-5" />
             ) : (
-              <ChevronRight className="h-5 w-5" />
+              <ChevronRight className="w-5 h-5" />
             )}
           </button>
         </div>
@@ -113,14 +124,41 @@ export default function Sidebar({
                     : "hover:bg-indigo-800"
                 } ${!showLabels ? "justify-center px-2" : ""}`}
               >
-                <Icon className="h-5 w-5 shrink-0" />
+                <Icon className="w-5 h-5 shrink-0" />
                 {showLabels && <span>{item.label}</span>}
               </button>
             );
           })}
+
+          {isAdmin && showLabels && (
+            <div className="px-4 pb-2 pt-5">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-indigo-300">
+                Admin
+              </p>
+            </div>
+          )}
+
+          {isAdmin &&
+            adminMenuItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleSectionChange(item.id)}
+                  className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors ${
+                    activeSection === item.id
+                      ? "bg-amber-500 font-semibold text-indigo-950"
+                      : "hover:bg-indigo-800"
+                  } ${!showLabels ? "justify-center px-2" : ""}`}
+                >
+                  <Icon className="w-5 h-5 shrink-0" />
+                  {showLabels && <span>{item.label}</span>}
+                </button>
+              );
+            })}
         </nav>
 
-        <div className="space-y-2 border-t border-indigo-800 p-4">
+        <div className="p-4 space-y-2 border-t border-indigo-800">
           <button
             onClick={() => handleSectionChange("settings")}
             className={`flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left transition-colors ${
@@ -129,7 +167,7 @@ export default function Sidebar({
                 : "hover:bg-indigo-800"
             } ${!showLabels ? "justify-center px-2" : ""}`}
           >
-            <Settings className="h-5 w-5 shrink-0" />
+            <Settings className="w-5 h-5 shrink-0" />
             {showLabels && <span>Settings</span>}
           </button>
 
@@ -139,14 +177,14 @@ export default function Sidebar({
               !showLabels ? "justify-center px-2" : ""
             }`}
           >
-            <LogOut className="h-5 w-5 shrink-0" />
+            <LogOut className="w-5 h-5 shrink-0" />
             {showLabels && <span>Logout</span>}
           </button>
         </div>
 
         {showLabels && (
-          <div className="border-t border-indigo-800 p-4">
-            <div className="text-center text-xs text-indigo-300">
+          <div className="p-4 border-t border-indigo-800">
+            <div className="text-xs text-center text-indigo-300">
               LendSmart v1.0.0
             </div>
           </div>

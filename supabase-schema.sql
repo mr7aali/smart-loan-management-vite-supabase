@@ -7,6 +7,8 @@ CREATE TABLE IF NOT EXISTS profiles (
   email TEXT,
   full_name TEXT,
   phone TEXT,
+  role TEXT DEFAULT 'user' CHECK (role IN ('user', 'admin')),
+  account_status TEXT DEFAULT 'active' CHECK (account_status IN ('active', 'suspended')),
   plan TEXT DEFAULT 'free' CHECK (plan IN ('free', 'starter', 'professional', 'enterprise')),
   max_borrowers INTEGER DEFAULT 10,
   max_loans INTEGER DEFAULT 20,
@@ -69,6 +71,22 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Create payment records table for subscription billing history
+CREATE TABLE IF NOT EXISTS payments (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  provider TEXT DEFAULT 'paypal' CHECK (provider IN ('paypal')),
+  provider_order_id TEXT,
+  provider_capture_id TEXT UNIQUE,
+  subscription_plan TEXT NOT NULL CHECK (subscription_plan IN ('free', 'starter', 'professional', 'enterprise')),
+  amount DECIMAL(10, 2) NOT NULL,
+  currency TEXT DEFAULT 'USD',
+  status TEXT DEFAULT 'completed' CHECK (status IN ('pending', 'completed', 'failed', 'refunded')),
+  paid_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_borrowers_user_id ON borrowers(user_id);
 CREATE INDEX IF NOT EXISTS idx_loans_user_id ON loans(user_id);
@@ -77,6 +95,9 @@ CREATE INDEX IF NOT EXISTS idx_repayments_user_id ON repayments(user_id);
 CREATE INDEX IF NOT EXISTS idx_repayments_loan_id ON repayments(loan_id);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON subscriptions(user_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_subscriptions_user_unique ON subscriptions(user_id);
+CREATE INDEX IF NOT EXISTS idx_payments_user_id ON payments(user_id);
+CREATE INDEX IF NOT EXISTS idx_payments_paid_at ON payments(paid_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_capture_unique ON payments(provider_capture_id);
 
 -- Enable Row Level Security (RLS)
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
@@ -84,6 +105,7 @@ ALTER TABLE borrowers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE loans ENABLE ROW LEVEL SECURITY;
 ALTER TABLE repayments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
 
 -- Create RLS policies
 -- Profiles: users can only view/update their own profile
@@ -137,6 +159,10 @@ CREATE POLICY "Users can delete own repayments" ON repayments
 
 -- Subscriptions: users can only access their own subscription
 CREATE POLICY "Users can view own subscription" ON subscriptions
+  FOR SELECT USING (auth.uid() = user_id);
+
+-- Payments: users can only view their own payment records
+CREATE POLICY "Users can view own payments" ON payments
   FOR SELECT USING (auth.uid() = user_id);
 
 -- Create function to handle new user signup

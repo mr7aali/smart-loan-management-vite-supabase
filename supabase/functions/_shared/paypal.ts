@@ -323,6 +323,10 @@ export async function capturePayPalOrder(
   }
 
   return {
+    orderId,
     captureId: capture?.id ?? orderId,
+    amount: capturedAmount,
+    currency: capturedCurrency ?? "USD",
+    paidAt: new Date().toISOString(),
   };
 }

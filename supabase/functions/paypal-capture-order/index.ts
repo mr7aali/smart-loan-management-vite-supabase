@@ -1,7 +1,11 @@
 import { corsHeaders, errorResponse, handleFunctionError, jsonResponse } from '../_shared/cors.ts';
 import { capturePayPalOrder } from '../_shared/paypal.ts';
 import { isPaidSubscriptionPlanId } from '../_shared/plans.ts';
-import { requireUser, syncSubscriptionForUser } from '../_shared/supabase.ts';
+import {
+  requireUser,
+  savePaymentRecord,
+  syncSubscriptionForUser,
+} from '../_shared/supabase.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -27,6 +31,15 @@ Deno.serve(async (req) => {
     }
 
     const capture = await capturePayPalOrder(orderId, user.id, plan);
+    await savePaymentRecord({
+      userId: user.id,
+      orderId: capture.orderId,
+      captureId: capture.captureId,
+      planId: plan,
+      amount: capture.amount,
+      currency: capture.currency,
+      paidAt: capture.paidAt,
+    });
     const subscription = await syncSubscriptionForUser(user.id, plan);
 
     return jsonResponse({

@@ -49,6 +49,15 @@ export const auth = {
 
 // Database helpers
 export const db = {
+  async getProfile(userId: string) {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+    return { data, error };
+  },
+
   // Borrowers
   async getBorrowers(userId: string) {
     const { data, error } = await supabase
@@ -166,6 +175,42 @@ export const db = {
       .eq('id', id)
       .select()
       .single();
+    return { data, error };
+  },
+};
+
+export const adminApi = {
+  async getOverview() {
+    const { data, error } = await supabase.functions.invoke(
+      'admin-platform-overview',
+      {
+        body: {},
+      },
+    );
+    return { data, error };
+  },
+
+  async getUsers() {
+    const { data, error } = await supabase.functions.invoke('admin-users', {
+      body: {},
+    });
+    return { data, error };
+  },
+
+  async updateUser(payload: {
+    userId: string;
+    role?: 'user' | 'admin';
+    accountStatus?: 'active' | 'suspended';
+    plan?: 'free' | 'starter' | 'professional' | 'enterprise';
+    subscriptionStatus?: 'active' | 'cancelled' | 'expired';
+    endDate?: string | null;
+  }) {
+    const { data, error } = await supabase.functions.invoke(
+      'admin-update-user',
+      {
+        body: payload,
+      },
+    );
     return { data, error };
   },
 };

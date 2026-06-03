@@ -8,7 +8,7 @@ import {
   useNavigate,
   useParams,
 } from "react-router-dom";
-import { supabase, auth, db } from "./lib/supabase";
+import { supabase, auth, adminApi, db } from "./lib/supabase";
 import Dashboard from "./components/Dashboard";
 import Borrowers from "./components/Borrowers";
 import Loans from "./components/Loans";
@@ -25,8 +25,18 @@ import AuthPage from "./components/AuthPage";
 import SubscriptionPage from "./components/SubscriptionPage";
 import EmailVerificationNotice from "./components/EmailVerificationNotice";
 import PayPalCheckoutPage from "./components/PayPalCheckoutPage";
+import AdminOverview from "./components/AdminOverview";
+import AdminUsersPage from "./components/AdminUsersPage";
 import { useIsMobile } from "./hooks/use-mobile";
-import { Borrower, Loan, Repayment, Subscription } from "./types";
+import {
+  AdminManagedUser,
+  AdminOverviewData,
+  Borrower,
+  Loan,
+  Repayment,
+  Subscription,
+  UserProfile,
+} from "./types";
 import {
   isPaidSubscriptionPlanId,
   SubscriptionPlanId,
@@ -48,6 +58,8 @@ const APP_SECTIONS = [
   "subscription",
   "help",
   "settings",
+  "admin-overview",
+  "admin-users",
 ] as const;
 
 type AppSection = (typeof APP_SECTIONS)[number];
@@ -61,6 +73,8 @@ const SECTION_ROUTES: Record<AppSection, string> = {
   subscription: "/subscription",
   help: "/help",
   settings: "/settings",
+  "admin-overview": "/admin/overview",
+  "admin-users": "/admin/users",
 };
 
 function isAppSection(value: string | null): value is AppSection {
@@ -68,10 +82,14 @@ function isAppSection(value: string | null): value is AppSection {
 }
 
 function getSectionFromPathname(pathname: string): AppSection {
-  const [, firstSegment] = pathname.split("/");
+  const [, firstSegment, secondSegment] = pathname.split("/");
 
   if (firstSegment === "subscription") {
     return "subscription";
+  }
+
+  if (firstSegment === "admin") {
+    return secondSegment === "users" ? "admin-users" : "admin-overview";
   }
 
   if (isAppSection(firstSegment)) {
@@ -114,6 +132,7 @@ function App() {
   const [borrowers, setBorrowers] = useState<Borrower[]>([]);
   const [loans, setLoans] = useState<Loan[]>([]);
   const [repayments, setRepayments] = useState<Repayment[]>([]);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [showAddBorrower, setShowAddBorrower] = useState(false);
   const [showAddLoan, setShowAddLoan] = useState(false);
   const [showAddRepayment, setShowAddRepayment] = useState(false);
@@ -122,7 +141,14 @@ function App() {
   const [showEmailVerification, setShowEmailVerification] = useState(false);
   const [canResendEmail, setCanResendEmail] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [adminOverview, setAdminOverview] = useState<AdminOverviewData | null>(
+    null,
+  );
+  const [adminUsers, setAdminUsers] = useState<AdminManagedUser[]>([]);
+  const [adminOverviewLoading, setAdminOverviewLoading] = useState(false);
+  const [adminUsersLoading, setAdminUsersLoading] = useState(false);
   const activeSection = getSectionFromPathname(location.pathname);
+  const isAdmin = profile?.role === "admin";
   const hasOverlayOpen =
     sidebarOpen ||
     showAddBorrower ||
@@ -177,6 +203,48 @@ function App() {
     setSubscription(data || null);
   };
 
+  const loadProfile = async (userId: string) => {
+    const { data } = await db.getProfile(userId);
+    setProfile((data as UserProfile) || null);
+    return (data as UserProfile) || null;
+  };
+
+  const loadAdminOverview = async () => {
+    setAdminOverviewLoading(true);
+    try {
+      const { data, error } = await adminApi.getOverview();
+      if (error) throw error;
+      setAdminOverview((data as AdminOverviewData) || null);
+    } catch (error) {
+      console.error("Error loading admin overview:", error);
+      alert(
+        error instanceof Error
+          ? `Failed to load admin overview data: ${error.message}`
+          : "Failed to load admin overview data.",
+      );
+    } finally {
+      setAdminOverviewLoading(false);
+    }
+  };
+
+  const loadAdminUsers = async () => {
+    setAdminUsersLoading(true);
+    try {
+      const { data, error } = await adminApi.getUsers();
+      if (error) throw error;
+      setAdminUsers((data?.users as AdminManagedUser[]) || []);
+    } catch (error) {
+      console.error("Error loading admin users:", error);
+      alert(
+        error instanceof Error
+          ? `Failed to load admin user data: ${error.message}`
+          : "Failed to load admin user data.",
+      );
+    } finally {
+      setAdminUsersLoading(false);
+    }
+  };
+
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     if (
@@ -191,6 +259,7 @@ function App() {
       if (currentUser) {
         void loadData(currentUser.id);
         void loadSubscription(currentUser.id);
+        void loadProfile(currentUser.id);
       }
       setLoading(false);
     });
@@ -202,6 +271,7 @@ function App() {
       if (session?.user) {
         void loadData(session.user.id);
         void loadSubscription(session.user.id);
+        void loadProfile(session.user.id);
 
         if (event === "SIGNED_IN" && session.user.email_confirmed_at === null) {
           setShowEmailVerification(true);
@@ -213,6 +283,9 @@ function App() {
         setLoans([]);
         setRepayments([]);
         setSubscription(null);
+        setProfile(null);
+        setAdminOverview(null);
+        setAdminUsers([]);
       }
     });
 
@@ -278,6 +351,20 @@ function App() {
     };
   }, [user?.id]);
 
+  useEffect(() => {
+    if (!user?.id || !isAdmin) {
+      return;
+    }
+
+    if (location.pathname.startsWith("/admin/overview")) {
+      void loadAdminOverview();
+    }
+
+    if (location.pathname.startsWith("/admin/users")) {
+      void loadAdminUsers();
+    }
+  }, [isAdmin, location.pathname, user?.id]);
+
   const handleSignIn = async (email: string, password: string) => {
     const { data, error } = await auth.signIn(email, password);
     if (error) throw error;
@@ -324,6 +411,9 @@ function App() {
     setLoans([]);
     setRepayments([]);
     setSubscription(null);
+    setProfile(null);
+    setAdminOverview(null);
+    setAdminUsers([]);
     setShowEmailVerification(false);
     navigate("/dashboard", { replace: true });
   };
@@ -553,6 +643,59 @@ function App() {
     navigate(SECTION_ROUTES[section]);
   };
 
+  const handleAdminUserUpdate = async (payload: {
+    userId: string;
+    role: UserProfile["role"];
+    accountStatus: UserProfile["account_status"];
+    plan: Subscription["plan"];
+    subscriptionStatus: Subscription["status"];
+    endDate: string | null;
+  }) => {
+    try {
+      const { data, error } = await adminApi.updateUser({
+        userId: payload.userId,
+        role: payload.role,
+        accountStatus: payload.accountStatus,
+        plan: payload.plan,
+        subscriptionStatus: payload.subscriptionStatus,
+        endDate: payload.endDate,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      const updatedUser = data?.user as AdminManagedUser | undefined;
+      if (updatedUser) {
+        setAdminUsers((prev) =>
+          prev.map((userItem) =>
+            userItem.id === updatedUser.id
+              ? {
+                  ...userItem,
+                  ...updatedUser,
+                  payments: userItem.payments,
+                }
+              : userItem,
+          ),
+        );
+
+        if (updatedUser.id === user?.id) {
+          await loadProfile(updatedUser.id);
+          await loadSubscription(updatedUser.id);
+        }
+      }
+
+      alert("User access updated successfully.");
+    } catch (error) {
+      console.error("Error updating admin user:", error);
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Failed to update the selected user.",
+      );
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50">
@@ -574,12 +717,20 @@ function App() {
         setIsOpen={setSidebarOpen}
         user={user}
         onSignOut={handleSignOut}
+        isAdmin={isAdmin}
       />
       <div className="flex min-h-screen flex-1 flex-col">
         <Header
           title={activeSection}
           onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
           user={user}
+          borrowers={borrowers}
+          loans={loans}
+          repayments={repayments}
+          subscription={subscription}
+          onNavigateSection={handleSectionChange}
+          onOpenSettings={() => handleSectionChange("settings")}
+          onSignOut={handleSignOut}
         />
         <main className="flex-1 overflow-auto p-4 sm:p-6">
           <Routes>
@@ -668,6 +819,35 @@ function App() {
                   onSignOut={handleSignOut}
                   subscription={subscription}
                 />
+              }
+            />
+            <Route
+              path="/admin/overview"
+              element={
+                isAdmin ? (
+                  <AdminOverview
+                    data={adminOverview}
+                    loading={adminOverviewLoading}
+                    onRefresh={() => void loadAdminOverview()}
+                  />
+                ) : (
+                  <Navigate to="/dashboard" replace />
+                )
+              }
+            />
+            <Route
+              path="/admin/users"
+              element={
+                isAdmin ? (
+                  <AdminUsersPage
+                    users={adminUsers}
+                    loading={adminUsersLoading}
+                    onRefresh={() => void loadAdminUsers()}
+                    onUpdateUser={handleAdminUserUpdate}
+                  />
+                ) : (
+                  <Navigate to="/dashboard" replace />
+                )
               }
             />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
