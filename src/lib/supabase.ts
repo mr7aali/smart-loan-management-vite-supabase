@@ -21,6 +21,50 @@ export const auth = {
         },
       },
     });
+
+    if (!error && !data.session && data.user) {
+      const identities = data.user.identities;
+      const isObfuscatedExistingUser =
+        Array.isArray(identities) && identities.length === 0;
+
+      if (isObfuscatedExistingUser) {
+        return {
+          data,
+          error: new Error(
+            "An account with this email already exists. Please sign in instead.",
+          ),
+        };
+      }
+
+      const signInCheck = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (signInCheck.error) {
+        const normalizedMessage = signInCheck.error.message.toLowerCase();
+        const looksLikeExistingAccount =
+          normalizedMessage.includes("invalid login credentials") ||
+          normalizedMessage.includes("invalid_credentials") ||
+          normalizedMessage.includes("email rate limit exceeded") ||
+          normalizedMessage.includes("too many requests");
+        const looksLikeNewUnconfirmedAccount =
+          normalizedMessage.includes("email not confirmed") ||
+          normalizedMessage.includes("email_not_confirmed");
+
+        if (looksLikeExistingAccount && !looksLikeNewUnconfirmedAccount) {
+          return {
+            data,
+            error: new Error(
+              "An account with this email already exists. Please sign in instead.",
+            ),
+          };
+        }
+      } else if (signInCheck.data.session) {
+        await supabase.auth.signOut();
+      }
+    }
+
     return { data, error };
   },
 

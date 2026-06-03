@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import {
   CalendarClock,
   CreditCard,
-  RefreshCw,
   Search,
   ShieldCheck,
   UserCog,
@@ -14,6 +13,7 @@ import {
   Subscription,
   UserRole,
 } from "../types";
+import PaginationControls from "./PaginationControls";
 
 interface AdminUsersPageProps {
   users: AdminManagedUser[];
@@ -40,6 +40,8 @@ const moneyFormatter = new Intl.NumberFormat("en-US", {
   currency: "USD",
   maximumFractionDigits: 0,
 });
+
+const USERS_PER_PAGE = 8;
 
 function formatDate(value?: string | null) {
   if (!value) return "Not set";
@@ -71,13 +73,14 @@ function getStatusTone(status: string) {
 export default function AdminUsersPage({
   users,
   loading,
-  onRefresh,
+  onRefresh: _onRefresh,
   onUpdateUser,
 }: AdminUsersPageProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | AccountStatus>(
     "all",
   );
+  const [currentPage, setCurrentPage] = useState(1);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [role, setRole] = useState<UserRole>("user");
   const [accountStatus, setAccountStatus] = useState<AccountStatus>("active");
@@ -96,6 +99,15 @@ export default function AdminUsersPage({
     return matchesSearch && matchesStatus;
   });
 
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredUsers.length / USERS_PER_PAGE),
+  );
+  const paginatedUsers = filteredUsers.slice(
+    (currentPage - 1) * USERS_PER_PAGE,
+    currentPage * USERS_PER_PAGE,
+  );
+
   const selectedUser =
     filteredUsers.find((user) => user.id === selectedUserId) ||
     users.find((user) => user.id === selectedUserId) ||
@@ -108,6 +120,31 @@ export default function AdminUsersPage({
       setSelectedUserId(users[0].id);
     }
   }, [selectedUserId, users]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  useEffect(() => {
+    if (paginatedUsers.length === 0) {
+      setSelectedUserId(null);
+      return;
+    }
+
+    const selectedUserVisible = paginatedUsers.some(
+      (user) => user.id === selectedUserId,
+    );
+
+    if (!selectedUserVisible) {
+      setSelectedUserId(paginatedUsers[0].id);
+    }
+  }, [paginatedUsers, selectedUserId]);
 
   useEffect(() => {
     if (!selectedUser) {
@@ -186,7 +223,7 @@ export default function AdminUsersPage({
                 No users match your current search or status filter.
               </div>
             ) : (
-              filteredUsers.map((user) => (
+              paginatedUsers.map((user) => (
                 <button
                   key={user.id}
                   type="button"
@@ -234,6 +271,16 @@ export default function AdminUsersPage({
                 </button>
               ))
             )}
+          </div>
+
+          <div className="mt-5">
+            <PaginationControls
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={filteredUsers.length}
+              pageSize={USERS_PER_PAGE}
+              onPageChange={setCurrentPage}
+            />
           </div>
         </div>
 

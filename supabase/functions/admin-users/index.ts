@@ -5,7 +5,9 @@ import {
   jsonResponse,
 } from "../_shared/cors.ts";
 import {
+  backfillAccountRecordsForAuthUsers,
   createAdminClient,
+  listAllAuthUsers,
   requireAdminUser,
 } from "../_shared/supabase.ts";
 
@@ -53,6 +55,8 @@ Deno.serve(async (req) => {
 
   try {
     await requireAdminUser(req);
+    const authUsers = await listAllAuthUsers();
+    await backfillAccountRecordsForAuthUsers(authUsers);
     const admin = createAdminClient();
 
     const [
