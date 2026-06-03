@@ -51,19 +51,21 @@ export default function AuthPage({ onSignIn, onSignUp }: AuthPageProps) {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-indigo-900 via-purple-900 to-indigo-950 p-4 sm:p-6">
+    <div className="flex items-center justify-center min-h-screen p-4 bg-gradient-to-br from-indigo-900 via-purple-900 to-indigo-950 sm:p-6">
       <div className="w-full max-w-md">
         <div className="mb-6 text-center sm:mb-8">
-          <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg sm:h-16 sm:w-16">
-            <Bird className="h-8 w-8 text-white sm:h-10 sm:w-10" />
+          <div className="inline-flex items-center justify-center mb-4 shadow-lg h-14 w-14 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 sm:h-16 sm:w-16">
+            <Bird className="w-8 h-8 text-white sm:h-10 sm:w-10" />
           </div>
-          <h1 className="mb-2 text-3xl font-bold text-white sm:text-4xl">LendSmart</h1>
+          <h1 className="mb-2 text-3xl font-bold text-white sm:text-4xl">
+            LendSmart
+          </h1>
           <p className="text-sm text-indigo-200 sm:text-base">
             Smart Loan Management for Modern Lenders
           </p>
         </div>
 
-        <div className="rounded-2xl bg-white p-6 shadow-2xl sm:p-8">
+        <div className="p-6 bg-white shadow-2xl rounded-2xl sm:p-8">
           <div className="mb-6 text-center">
             <h2 className="text-xl font-bold text-gray-800 sm:text-2xl">
               {isLogin ? "Welcome Back" : "Create Account"}
@@ -74,7 +76,7 @@ export default function AuthPage({ onSignIn, onSignUp }: AuthPageProps) {
           </div>
 
           {error && (
-            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">
+            <div className="p-3 mb-4 text-sm text-red-600 border border-red-200 rounded-lg bg-red-50">
               {error}
             </div>
           )}
@@ -82,64 +84,64 @@ export default function AuthPage({ onSignIn, onSignUp }: AuthPageProps) {
           <form onSubmit={handleSubmit} className="space-y-4">
             {!isLogin && (
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">
+                <label className="block mb-1 text-sm font-medium text-gray-700">
                   Full Name
                 </label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                  <User className="absolute w-4 h-4 text-gray-400 -translate-y-1/2 left-3 top-1/2" />
                   <input
                     type="text"
                     value={formData.name}
                     onChange={(e) => handleChange("name", e.target.value)}
                     placeholder="John Doe"
                     required
-                    className="w-full rounded-xl border border-gray-200 py-3 pl-10 pr-4 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full py-3 pl-10 pr-4 border border-gray-200 rounded-xl focus:border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
               </div>
             )}
 
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
+              <label className="block mb-1 text-sm font-medium text-gray-700">
                 Email
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <Mail className="absolute w-4 h-4 text-gray-400 -translate-y-1/2 left-3 top-1/2" />
                 <input
                   type="email"
                   value={formData.email}
                   onChange={(e) => handleChange("email", e.target.value)}
                   placeholder="you@example.com"
                   required
-                  className="w-full rounded-xl border border-gray-200 py-3 pl-10 pr-4 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full py-3 pl-10 pr-4 border border-gray-200 rounded-xl focus:border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
+              <label className="block mb-1 text-sm font-medium text-gray-700">
                 Password
               </label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <Lock className="absolute w-4 h-4 text-gray-400 -translate-y-1/2 left-3 top-1/2" />
                 <input
                   type="password"
                   value={formData.password}
                   onChange={(e) => handleChange("password", e.target.value)}
                   placeholder="Enter your password"
                   required
-                  className="w-full rounded-xl border border-gray-200 py-3 pl-10 pr-4 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full py-3 pl-10 pr-4 border border-gray-200 rounded-xl focus:border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
             </div>
 
             {!isLogin && (
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">
+                <label className="block mb-1 text-sm font-medium text-gray-700">
                   Confirm Password
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                  <Lock className="absolute w-4 h-4 text-gray-400 -translate-y-1/2 left-3 top-1/2" />
                   <input
                     type="password"
                     value={formData.confirmPassword}
@@ -148,7 +150,7 @@ export default function AuthPage({ onSignIn, onSignUp }: AuthPageProps) {
                     }
                     placeholder="Confirm your password"
                     required
-                    className="w-full rounded-xl border border-gray-200 py-3 pl-10 pr-4 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full py-3 pl-10 pr-4 border border-gray-200 rounded-xl focus:border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
               </div>
@@ -157,14 +159,14 @@ export default function AuthPage({ onSignIn, onSignUp }: AuthPageProps) {
             <button
               type="submit"
               disabled={loading}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 py-3 font-semibold text-white transition-all hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50"
+              className="flex items-center justify-center w-full gap-2 py-3 font-semibold text-white transition-all rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50"
             >
               {loading ? (
-                <div className="h-5 w-5 animate-spin rounded-full border-b-2 border-white"></div>
+                <div className="w-5 h-5 border-b-2 border-white rounded-full animate-spin"></div>
               ) : (
                 <>
                   {isLogin ? "Sign In" : "Create Account"}
-                  <ArrowRight className="h-4 w-4" />
+                  <ArrowRight className="w-4 h-4" />
                 </>
               )}
             </button>
@@ -186,7 +188,7 @@ export default function AuthPage({ onSignIn, onSignUp }: AuthPageProps) {
           </div>
         </div>
 
-        <p className="mt-6 text-center text-sm text-indigo-300">
+        <p className="mt-6 text-sm text-center text-indigo-300">
           By continuing, you agree to our Terms & Privacy Policy
         </p>
       </div>
