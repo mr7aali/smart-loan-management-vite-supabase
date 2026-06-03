@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { Menu, Bell, Search, LogOut, ChevronDown, Settings } from "lucide-react";
+import {
+  Menu,
+  Bell,
+  Search,
+  LogOut,
+  ChevronDown,
+  Settings,
+} from "lucide-react";
 import { User } from "@supabase/supabase-js";
 
 interface HeaderProps {
@@ -116,11 +123,11 @@ export default function Header({
               aria-expanded={isProfileMenuOpen}
               aria-label="Open account menu"
             >
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-sm font-bold text-white shadow-sm sm:h-10 sm:w-10">
+              <div className="flex items-center justify-center text-sm font-bold text-white rounded-full shadow-sm h-9 w-9 bg-gradient-to-br from-indigo-500 to-purple-600 sm:h-10 sm:w-10">
                 {getUserInitials(user?.email)}
               </div>
               <div className="hidden min-w-0 md:block">
-                <p className="truncate font-medium text-gray-800">{userName}</p>
+                <p className="font-medium text-gray-800 truncate">{userName}</p>
                 <p className="text-sm text-gray-500">LendSmart Account</p>
               </div>
               <ChevronDown
@@ -131,15 +138,15 @@ export default function Header({
             </button>
 
             {isProfileMenuOpen && (
-              <div className="absolute right-0 z-20 mt-3 w-72 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl">
-                <div className="bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-4 text-white">
+              <div className="absolute right-0 z-20 mt-3 overflow-hidden bg-white border border-gray-200 shadow-xl w-72 rounded-2xl">
+                <div className="px-4 py-4 text-white bg-gradient-to-r from-indigo-600 to-violet-600">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/20 text-sm font-bold backdrop-blur-sm">
+                    <div className="flex items-center justify-center text-sm font-bold rounded-full h-11 w-11 bg-white/20 backdrop-blur-sm">
                       {getUserInitials(user?.email)}
                     </div>
                     <div className="min-w-0">
-                      <p className="truncate font-semibold">{userName}</p>
-                      <p className="truncate text-sm text-indigo-100">
+                      <p className="font-semibold truncate">{userName}</p>
+                      <p className="text-sm text-indigo-100 truncate">
                         {user?.email || "No email available"}
                       </p>
                     </div>
@@ -153,9 +160,9 @@ export default function Header({
                       setIsProfileMenuOpen(false);
                       onOpenSettings?.();
                     }}
-                    className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                    className="flex items-center w-full gap-3 px-3 py-3 text-sm font-medium text-gray-700 transition-colors rounded-xl hover:bg-gray-50"
                   >
-                    <Settings className="h-4 w-4 text-indigo-500" />
+                    <Settings className="w-4 h-4 text-indigo-500" />
                     Account settings
                   </button>
 
@@ -165,9 +172,9 @@ export default function Header({
                       setIsProfileMenuOpen(false);
                       onSignOut?.();
                     }}
-                    className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
+                    className="flex items-center w-full gap-3 px-3 py-3 text-sm font-medium text-red-600 transition-colors rounded-xl hover:bg-red-50"
                   >
-                    <LogOut className="h-4 w-4" />
+                    <LogOut className="w-4 h-4" />
                     Sign out
                   </button>
                 </div>

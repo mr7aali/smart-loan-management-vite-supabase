@@ -54,7 +54,7 @@ export default function Borrowers({
   return (
     <div className="">
       {/* Actions Bar */}
-      <div className="flex flex-col items-stretch justify-between gap-4 sm:flex-row sm:items-center">
+      <div className="flex flex-col items-stretch justify-between gap-4 pb-2 sm:flex-row sm:items-center">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute w-4 h-4 text-gray-400 -translate-y-1/2 left-3 top-1/2" />
           <input
