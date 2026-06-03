@@ -1,8 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Activity,
   BadgeDollarSign,
-  Crown,
   ShieldCheck,
   TimerReset,
   Users,
@@ -14,6 +13,7 @@ import {
   AdminOverviewPayment,
   AdminPlanDistributionItem,
 } from "../types";
+import PaginationControls from "./PaginationControls";
 
 interface AdminOverviewProps {
   data: AdminOverviewData | null;
@@ -22,6 +22,8 @@ interface AdminOverviewProps {
 }
 
 type OverviewTab = "payments" | "users" | "subscriptions";
+
+const OVERVIEW_PAGE_SIZE = 4;
 
 const moneyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -324,6 +326,11 @@ export default function AdminOverview({
   onRefresh,
 }: AdminOverviewProps) {
   const [activeTab, setActiveTab] = useState<OverviewTab>("payments");
+  const [tabPages, setTabPages] = useState<Record<OverviewTab, number>>({
+    payments: 1,
+    users: 1,
+    subscriptions: 1,
+  });
   const stats = data?.stats;
   const planDistribution = data?.planDistribution ?? [];
   const dominantPlan = getDominantPlan(planDistribution);
@@ -356,6 +363,58 @@ export default function AdminOverview({
       count: data?.expiringSubscriptions.length ?? 0,
     },
   ];
+  const tabItems: Record<
+    OverviewTab,
+    AdminOverviewPayment[] | AdminNewestUser[] | AdminExpiringSubscription[]
+  > = {
+    payments: data?.recentPayments ?? [],
+    users: data?.newestUsers ?? [],
+    subscriptions: data?.expiringSubscriptions ?? [],
+  };
+  const activeItems = tabItems[activeTab];
+  const activePage = tabPages[activeTab];
+  const activeTotalPages = Math.max(
+    1,
+    Math.ceil(activeItems.length / OVERVIEW_PAGE_SIZE),
+  );
+  const paginatedActiveItems = activeItems.slice(
+    (activePage - 1) * OVERVIEW_PAGE_SIZE,
+    activePage * OVERVIEW_PAGE_SIZE,
+  );
+
+  useEffect(() => {
+    setTabPages((currentPages) => {
+      let changed = false;
+      const nextPages = { ...currentPages };
+
+      (["payments", "users", "subscriptions"] as OverviewTab[]).forEach(
+        (tab) => {
+        const totalPages = Math.max(
+          1,
+          Math.ceil(tabItems[tab].length / OVERVIEW_PAGE_SIZE),
+        );
+
+        if (nextPages[tab] > totalPages) {
+          nextPages[tab] = totalPages;
+          changed = true;
+        }
+        },
+      );
+
+      return changed ? nextPages : currentPages;
+    });
+  }, [
+    data?.recentPayments?.length,
+    data?.newestUsers?.length,
+    data?.expiringSubscriptions?.length,
+  ]);
+
+  const handleTabPageChange = (tab: OverviewTab, page: number) => {
+    setTabPages((currentPages) => ({
+      ...currentPages,
+      [tab]: page,
+    }));
+  };
 
   if (loading) {
     return <OverviewSkeleton />;
@@ -480,8 +539,8 @@ export default function AdminOverview({
         </div>
 
         {activeTab === "payments" && (
-          <div className="rounded-[24px] bg-slate-50/80 p-5">
-            <div className="flex items-center justify-between gap-3 mb-5">
+            <div className="rounded-[24px] bg-slate-50/80 p-5">
+              <div className="flex items-center justify-between gap-3 mb-5">
               <div>
                 <h4 className="text-xl font-bold text-slate-900">
                   Recent payments
@@ -494,7 +553,18 @@ export default function AdminOverview({
                 <BadgeDollarSign className="w-5 h-5" />
               </div>
             </div>
-            <PaymentsList payments={data?.recentPayments ?? []} />
+            <PaymentsList
+              payments={paginatedActiveItems as AdminOverviewPayment[]}
+            />
+            <div className="mt-5">
+              <PaginationControls
+                currentPage={activePage}
+                totalPages={activeTotalPages}
+                totalItems={activeItems.length}
+                pageSize={OVERVIEW_PAGE_SIZE}
+                onPageChange={(page) => handleTabPageChange("payments", page)}
+              />
+            </div>
           </div>
         )}
 
@@ -513,7 +583,16 @@ export default function AdminOverview({
                 <ShieldCheck className="w-5 h-5" />
               </div>
             </div>
-            <NewestUsers users={data?.newestUsers ?? []} />
+            <NewestUsers users={paginatedActiveItems as AdminNewestUser[]} />
+            <div className="mt-5">
+              <PaginationControls
+                currentPage={activePage}
+                totalPages={activeTotalPages}
+                totalItems={activeItems.length}
+                pageSize={OVERVIEW_PAGE_SIZE}
+                onPageChange={(page) => handleTabPageChange("users", page)}
+              />
+            </div>
           </div>
         )}
 
@@ -532,7 +611,20 @@ export default function AdminOverview({
                 <TimerReset className="w-5 h-5" />
               </div>
             </div>
-            <ExpiringSubscriptions items={data?.expiringSubscriptions ?? []} />
+            <ExpiringSubscriptions
+              items={paginatedActiveItems as AdminExpiringSubscription[]}
+            />
+            <div className="mt-5">
+              <PaginationControls
+                currentPage={activePage}
+                totalPages={activeTotalPages}
+                totalItems={activeItems.length}
+                pageSize={OVERVIEW_PAGE_SIZE}
+                onPageChange={(page) =>
+                  handleTabPageChange("subscriptions", page)
+                }
+              />
+            </div>
           </div>
         )}
       </section>

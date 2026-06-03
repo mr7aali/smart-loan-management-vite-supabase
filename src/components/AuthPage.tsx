@@ -10,6 +10,7 @@ export default function AuthPage({ onSignIn, onSignUp }: AuthPageProps) {
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -20,6 +21,7 @@ export default function AuthPage({ onSignIn, onSignUp }: AuthPageProps) {
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError("");
+    setSuccessMessage("");
     setLoading(true);
 
     try {
@@ -37,6 +39,16 @@ export default function AuthPage({ onSignIn, onSignUp }: AuthPageProps) {
           return;
         }
         await onSignUp(formData.email, formData.password, formData.name);
+        setIsLogin(true);
+        setFormData((current) => ({
+          ...current,
+          name: "",
+          password: "",
+          confirmPassword: "",
+        }));
+        setSuccessMessage(
+          "Account created. If you receive a verification email, confirm it first, then sign in.",
+        );
       }
     } catch (err: any) {
       setError(err.message || "An error occurred");
@@ -48,6 +60,7 @@ export default function AuthPage({ onSignIn, onSignUp }: AuthPageProps) {
   const handleChange = (field: string, value: string) => {
     setFormData({ ...formData, [field]: value });
     setError("");
+    setSuccessMessage("");
   };
 
   return (
@@ -82,6 +95,12 @@ export default function AuthPage({ onSignIn, onSignUp }: AuthPageProps) {
           {error && (
             <div className="p-3 mb-4 text-sm text-red-600 border border-red-200 rounded-lg bg-red-50">
               {error}
+            </div>
+          )}
+
+          {successMessage && (
+            <div className="p-3 mb-4 text-sm border rounded-lg bg-emerald-50 border-emerald-200 text-emerald-700">
+              {successMessage}
             </div>
           )}
 
@@ -183,6 +202,7 @@ export default function AuthPage({ onSignIn, onSignUp }: AuthPageProps) {
                 onClick={() => {
                   setIsLogin(!isLogin);
                   setError("");
+                  setSuccessMessage("");
                 }}
                 className="ml-1 font-semibold text-indigo-600 hover:text-indigo-700"
               >

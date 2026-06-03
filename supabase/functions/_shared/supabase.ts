@@ -102,6 +102,120 @@ export function createAdminClient() {
   });
 }
 
+export async function listAllAuthUsers() {
+  const admin = createAdminClient();
+  const users: User[] = [];
+  const perPage = 1000;
+  let page = 1;
+
+  while (true) {
+    const { data, error } = await admin.auth.admin.listUsers({
+      page,
+      perPage,
+    });
+
+    if (error) {
+      throw new HttpError(500, `Failed to list auth users: ${error.message}`);
+    }
+
+    const batch = data.users ?? [];
+    users.push(...batch);
+
+    if (batch.length < perPage) {
+      break;
+    }
+
+    page += 1;
+  }
+
+  return users;
+}
+
+export async function backfillAccountRecordsForAuthUsers(authUsers: User[]) {
+  const admin = createAdminClient();
+  const userIds = authUsers.map((user) => user.id);
+
+  if (userIds.length === 0) {
+    return;
+  }
+
+  const [{ data: existingProfiles }, { data: existingSubscriptions }] =
+    await Promise.all([
+      admin.from("profiles").select("id").in("id", userIds),
+      admin.from("subscriptions").select("user_id").in("user_id", userIds),
+    ]);
+
+  const existingProfileIds = new Set(
+    (existingProfiles ?? []).map((profile) => profile.id as string),
+  );
+  const existingSubscriptionIds = new Set(
+    (existingSubscriptions ?? []).map(
+      (subscription) => subscription.user_id as string,
+    ),
+  );
+
+  const nowIso = new Date().toISOString();
+  const missingProfiles = authUsers
+    .filter((user) => !existingProfileIds.has(user.id))
+    .map((user) => ({
+      id: user.id,
+      email: user.email ?? null,
+      full_name:
+        typeof user.user_metadata?.full_name === "string"
+          ? user.user_metadata.full_name
+          : null,
+      role: "user",
+      account_status: "active",
+      plan: "free",
+      max_borrowers: PLAN_DETAILS.free.maxBorrowers,
+      max_loans: PLAN_DETAILS.free.maxLoans,
+      created_at: user.created_at ?? nowIso,
+      updated_at: nowIso,
+    }));
+
+  const missingSubscriptions = authUsers
+    .filter((user) => !existingSubscriptionIds.has(user.id))
+    .map((user) => ({
+      user_id: user.id,
+      plan: "free",
+      status: "active",
+      billing_cycle: "monthly",
+      price: PLAN_DETAILS.free.price,
+      start_date: user.created_at ?? nowIso,
+      end_date: null,
+      created_at: user.created_at ?? nowIso,
+      updated_at: nowIso,
+    }));
+
+  if (missingProfiles.length > 0) {
+    const { error } = await admin.from("profiles").upsert(missingProfiles, {
+      onConflict: "id",
+    });
+
+    if (error) {
+      throw new HttpError(
+        500,
+        `Failed to backfill profiles: ${error.message}`,
+      );
+    }
+  }
+
+  if (missingSubscriptions.length > 0) {
+    const { error } = await admin
+      .from("subscriptions")
+      .upsert(missingSubscriptions, {
+        onConflict: "user_id",
+      });
+
+    if (error) {
+      throw new HttpError(
+        500,
+        `Failed to backfill subscriptions: ${error.message}`,
+      );
+    }
+  }
+}
+
 export async function requireUser(req: Request): Promise<User> {
   const supabase = createUserClient(req);
   const {

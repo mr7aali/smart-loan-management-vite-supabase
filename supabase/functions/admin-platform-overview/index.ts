@@ -5,7 +5,9 @@ import {
   jsonResponse,
 } from "../_shared/cors.ts";
 import {
+  backfillAccountRecordsForAuthUsers,
   createAdminClient,
+  listAllAuthUsers,
   requireAdminUser,
 } from "../_shared/supabase.ts";
 
@@ -37,6 +39,8 @@ type PaymentRow = {
   provider_capture_id: string | null;
 };
 
+const OVERVIEW_PAGE_DATASET_SIZE = 24;
+
 function daysUntil(dateString: string) {
   const now = new Date();
   const date = new Date(dateString);
@@ -54,6 +58,8 @@ Deno.serve(async (req) => {
 
   try {
     await requireAdminUser(req);
+    const authUsers = await listAllAuthUsers();
+    await backfillAccountRecordsForAuthUsers(authUsers);
     const admin = createAdminClient();
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -82,7 +88,7 @@ Deno.serve(async (req) => {
           "id, user_id, amount, currency, status, subscription_plan, paid_at, provider_capture_id",
         )
         .order("paid_at", { ascending: false })
-        .limit(8),
+        .limit(OVERVIEW_PAGE_DATASET_SIZE),
     ]);
 
     if (profilesError || subscriptionsError || paymentsError || recentPaymentsError) {
@@ -135,7 +141,7 @@ Deno.serve(async (req) => {
         };
       })
       .sort((a, b) => (a.daysRemaining ?? 999) - (b.daysRemaining ?? 999))
-      .slice(0, 6);
+      .slice(0, OVERVIEW_PAGE_DATASET_SIZE);
 
     const planDistribution = ["free", "starter", "professional", "enterprise"].map(
       (plan) => ({
@@ -162,7 +168,9 @@ Deno.serve(async (req) => {
       };
     });
 
-    const newestUsers = profileRows.slice(0, 5).map((profile) => ({
+    const newestUsers = profileRows
+      .slice(0, OVERVIEW_PAGE_DATASET_SIZE)
+      .map((profile) => ({
       id: profile.id,
       name: profile.full_name || profile.email?.split("@")[0] || "Unknown user",
       email: profile.email || "No email",
@@ -173,7 +181,7 @@ Deno.serve(async (req) => {
 
     return jsonResponse({
       stats: {
-        totalUsers: profileRows.length,
+        totalUsers: authUsers.length,
         adminUsers: profileRows.filter((profile) => profile.role === "admin").length,
         activeSubscriptions: activeSubscriptions.length,
         monthlyRevenue,
