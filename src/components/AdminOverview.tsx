@@ -1,8 +1,8 @@
+import { useState } from "react";
 import {
   Activity,
   BadgeDollarSign,
   Crown,
-  RefreshCw,
   ShieldCheck,
   TimerReset,
   Users,
@@ -20,6 +20,8 @@ interface AdminOverviewProps {
   loading: boolean;
   onRefresh: () => void;
 }
+
+type OverviewTab = "payments" | "users" | "subscriptions";
 
 const moneyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -63,6 +65,70 @@ function getStatusTone(status: string) {
   };
 
   return tones[status] ?? "bg-slate-100 text-slate-700";
+}
+
+function getDominantPlan(items: AdminPlanDistributionItem[]) {
+  if (items.length === 0) {
+    return null;
+  }
+
+  return [...items].sort((a, b) => b.users - a.users)[0];
+}
+
+function OverviewSkeleton() {
+  return (
+    <div className="space-y-6">
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, index) => (
+          <div
+            key={index}
+            className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1 space-y-3">
+                <div className="w-24 h-3 rounded-full animate-pulse bg-slate-200" />
+                <div className="w-20 h-8 rounded-full animate-pulse bg-slate-200" />
+                <div className="h-3 rounded-full w-28 animate-pulse bg-slate-200" />
+              </div>
+              <div className="w-12 h-12 animate-pulse rounded-2xl bg-slate-200" />
+            </div>
+          </div>
+        ))}
+      </section>
+
+      <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="grid gap-4 xl:grid-cols-[1.1fr_1.3fr]">
+          <div className="h-52 animate-pulse rounded-[24px] bg-slate-200" />
+          <div className="h-52 animate-pulse rounded-[24px] bg-slate-200" />
+        </div>
+      </section>
+
+      <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <div className="flex gap-2 mb-5">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <div
+              key={index}
+              className="w-32 h-10 animate-pulse rounded-2xl bg-slate-200"
+            />
+          ))}
+        </div>
+        <div className="space-y-3">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div
+              key={index}
+              className="p-4 border rounded-2xl border-slate-100 bg-slate-50"
+            >
+              <div className="space-y-3">
+                <div className="w-40 h-4 rounded-full animate-pulse bg-slate-200" />
+                <div className="w-56 h-3 rounded-full animate-pulse bg-slate-200" />
+                <div className="w-32 h-3 rounded-full animate-pulse bg-slate-200" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
 }
 
 function PaymentsList({ payments }: { payments: AdminOverviewPayment[] }) {
@@ -170,29 +236,33 @@ function PlanDistribution({ items }: { items: AdminPlanDistributionItem[] }) {
   const total = items.reduce((sum, item) => sum + item.users, 0) || 1;
 
   return (
-    <div className="space-y-4">
+    <div className="" style={{ border: "1px solid red" }}>
       {items.map((item) => {
         const percentage = Math.round((item.users / total) * 100);
         return (
-          <div key={item.plan} className="space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2">
-                <span
-                  className={`rounded-full px-2.5 py-1 font-medium capitalize ${getPlanTone(item.plan)}`}
-                >
-                  {item.plan}
-                </span>
-                <span className="text-slate-500">{item.users} users</span>
-              </div>
-              <span className="font-medium text-slate-700">{percentage}%</span>
+          <div
+            style={{ border: "1px solid red" }}
+            key={item.plan}
+            className="grid gap-2 rounded-2xl bg-slate-50 p-3 sm:grid-cols-[auto_1fr_auto] sm:items-center"
+          >
+            <div className="flex items-center gap-2">
+              <span
+                className={`rounded-full px-2.5 py-1 text-xs font-medium capitalize ${getPlanTone(item.plan)}`}
+              >
+                {item.plan}
+              </span>
+              <span className="text-sm text-slate-500">{item.users} users</span>
             </div>
-            <div className="h-2 rounded-full bg-slate-100">
+            <div className="h-2 rounded-full bg-slate-200">
               <div
                 className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-cyan-400"
                 style={{
                   width: `${Math.max(percentage, item.users > 0 ? 8 : 0)}%`,
                 }}
               />
+            </div>
+            <div className="text-sm font-medium text-slate-700 sm:text-right">
+              {percentage}%
             </div>
           </div>
         );
@@ -234,12 +304,66 @@ function NewestUsers({ users }: { users: AdminNewestUser[] }) {
   );
 }
 
+function InlinePlanMix({
+  items,
+  dominantPlan,
+  totalPlanUsers,
+}: {
+  items: AdminPlanDistributionItem[];
+  dominantPlan: AdminPlanDistributionItem | null;
+  totalPlanUsers: number;
+}) {
+  return (
+    <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+      <div>
+        <PlanDistribution items={items} />
+      </div>
+    </section>
+  );
+}
+
 export default function AdminOverview({
   data,
   loading,
   onRefresh,
 }: AdminOverviewProps) {
+  const [activeTab, setActiveTab] = useState<OverviewTab>("payments");
   const stats = data?.stats;
+  const planDistribution = data?.planDistribution ?? [];
+  const dominantPlan = getDominantPlan(planDistribution);
+  const totalPlanUsers = planDistribution.reduce(
+    (sum, item) => sum + item.users,
+    0,
+  );
+  const tabs: Array<{
+    id: OverviewTab;
+    label: string;
+    description: string;
+    count: number;
+  }> = [
+    {
+      id: "payments",
+      label: "Recent payments",
+      description: "Latest captured subscription payments",
+      count: data?.recentPayments.length ?? 0,
+    },
+    {
+      id: "users",
+      label: "Newest users",
+      description: "Recently created platform accounts",
+      count: data?.newestUsers.length ?? 0,
+    },
+    {
+      id: "subscriptions",
+      label: "Expiring subscriptions",
+      description: "Accounts needing renewal attention",
+      count: data?.expiringSubscriptions.length ?? 0,
+    },
+  ];
+
+  if (loading) {
+    return <OverviewSkeleton />;
+  }
 
   return (
     <div className="space-y-6">
@@ -292,74 +416,129 @@ export default function AdminOverview({
         })}
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-        <div className="rounded-[28px] border border-slate-200 bg-slate-50/80 p-5 shadow-sm sm:p-6">
-          <div className="flex items-center justify-between gap-3 mb-5">
-            <div>
-              <h3 className="text-xl font-bold text-slate-900">
-                Recent payments
-              </h3>
-              <p className="text-sm text-slate-500">
-                Confirmed subscription payments captured through PayPal.
-              </p>
-            </div>
-            <div className="flex items-center justify-center bg-white shadow-sm h-11 w-11 rounded-2xl text-emerald-600">
-              <BadgeDollarSign className="w-5 h-5" />
-            </div>
+      <InlinePlanMix
+        items={planDistribution}
+        dominantPlan={dominantPlan}
+        totalPlanUsers={totalPlanUsers}
+      />
+
+      <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <div className="flex flex-col gap-4 mb-5 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h3 className="text-xl font-bold text-slate-900">Admin activity</h3>
+            <p className="text-sm text-slate-500">
+              Toggle between payments, user onboarding, and subscription risk.
+            </p>
           </div>
-          <PaymentsList payments={data?.recentPayments ?? []} />
+
+          <button
+            type="button"
+            onClick={onRefresh}
+            className="inline-flex items-center justify-center rounded-2xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+          >
+            Refresh
+          </button>
         </div>
 
-        <div className="space-y-6">
-          <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <div className="grid gap-3 mb-6 md:grid-cols-3">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`rounded-[24px] border p-4 text-left transition ${
+                activeTab === tab.id
+                  ? "border-slate-900 bg-slate-900 text-white shadow-sm"
+                  : "border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-white"
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p
+                    className={`text-sm font-semibold ${
+                      activeTab === tab.id ? "text-white" : "text-slate-900"
+                    }`}
+                  >
+                    {tab.label}
+                  </p>
+                  <p
+                    className={`mt-1 text-sm ${
+                      activeTab === tab.id ? "text-slate-300" : "text-slate-500"
+                    }`}
+                  >
+                    {tab.description}
+                  </p>
+                </div>
+                <span
+                  className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                    activeTab === tab.id
+                      ? "bg-white/15 text-white"
+                      : "bg-white text-slate-700"
+                  }`}
+                >
+                  {tab.count}
+                </span>
+              </div>
+            </button>
+          ))}
+        </div>
+
+        {activeTab === "payments" && (
+          <div className="rounded-[24px] bg-slate-50/80 p-5">
             <div className="flex items-center justify-between gap-3 mb-5">
               <div>
-                <h3 className="text-xl font-bold text-slate-900">Plan mix</h3>
+                <h4 className="text-xl font-bold text-slate-900">
+                  Recent payments
+                </h4>
                 <p className="text-sm text-slate-500">
-                  Current distribution across active and free users.
+                  Confirmed subscription payments captured through PayPal.
                 </p>
               </div>
-              <div className="flex items-center justify-center h-11 w-11 rounded-2xl bg-violet-50 text-violet-600">
-                <Crown className="w-5 h-5" />
+              <div className="flex items-center justify-center bg-white shadow-sm h-11 w-11 rounded-2xl text-emerald-600">
+                <BadgeDollarSign className="w-5 h-5" />
               </div>
             </div>
-            <PlanDistribution items={data?.planDistribution ?? []} />
+            <PaymentsList payments={data?.recentPayments ?? []} />
           </div>
+        )}
 
-          <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        {activeTab === "users" && (
+          <div className="rounded-[24px] bg-slate-50/80 p-5">
             <div className="flex items-center justify-between gap-3 mb-5">
               <div>
-                <h3 className="text-xl font-bold text-slate-900">
+                <h4 className="text-xl font-bold text-slate-900">
                   Newest users
-                </h3>
+                </h4>
                 <p className="text-sm text-slate-500">
                   Fresh accounts that may need onboarding support.
                 </p>
               </div>
-              <div className="flex items-center justify-center h-11 w-11 rounded-2xl bg-sky-50 text-sky-600">
+              <div className="flex items-center justify-center bg-white shadow-sm h-11 w-11 rounded-2xl text-sky-600">
                 <ShieldCheck className="w-5 h-5" />
               </div>
             </div>
             <NewestUsers users={data?.newestUsers ?? []} />
           </div>
-        </div>
-      </section>
+        )}
 
-      <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-        <div className="flex items-center justify-between gap-3 mb-5">
-          <div>
-            <h3 className="text-xl font-bold text-slate-900">
-              Expiring subscriptions
-            </h3>
-            <p className="text-sm text-slate-500">
-              Users whose plan validity dates need attention soon.
-            </p>
+        {activeTab === "subscriptions" && (
+          <div className="rounded-[24px] bg-slate-50/80 p-5">
+            <div className="flex items-center justify-between gap-3 mb-5">
+              <div>
+                <h4 className="text-xl font-bold text-slate-900">
+                  Expiring subscriptions
+                </h4>
+                <p className="text-sm text-slate-500">
+                  Users whose plan validity dates need attention soon.
+                </p>
+              </div>
+              <div className="flex items-center justify-center bg-white shadow-sm h-11 w-11 rounded-2xl text-amber-600">
+                <TimerReset className="w-5 h-5" />
+              </div>
+            </div>
+            <ExpiringSubscriptions items={data?.expiringSubscriptions ?? []} />
           </div>
-          <div className="flex items-center justify-center h-11 w-11 rounded-2xl bg-amber-50 text-amber-600">
-            <TimerReset className="w-5 h-5" />
-          </div>
-        </div>
-        <ExpiringSubscriptions items={data?.expiringSubscriptions ?? []} />
+        )}
       </section>
     </div>
   );
