@@ -724,6 +724,11 @@ function App() {
           title={activeSection}
           onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
           user={user}
+          borrowers={borrowers}
+          loans={loans}
+          repayments={repayments}
+          subscription={subscription}
+          onNavigateSection={handleSectionChange}
           onOpenSettings={() => handleSectionChange("settings")}
           onSignOut={handleSignOut}
         />
