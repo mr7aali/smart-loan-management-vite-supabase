@@ -236,33 +236,29 @@ function PlanDistribution({ items }: { items: AdminPlanDistributionItem[] }) {
   const total = items.reduce((sum, item) => sum + item.users, 0) || 1;
 
   return (
-    <div className="" style={{ border: "1px solid red" }}>
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {items.map((item) => {
         const percentage = Math.round((item.users / total) * 100);
         return (
           <div
-            style={{ border: "1px solid red" }}
             key={item.plan}
-            className="grid gap-2 rounded-2xl bg-slate-50 p-3 sm:grid-cols-[auto_1fr_auto] sm:items-center"
+            className="rounded-2xl border border-slate-200 bg-white px-4 py-3"
           >
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between gap-3">
               <span
                 className={`rounded-full px-2.5 py-1 text-xs font-medium capitalize ${getPlanTone(item.plan)}`}
               >
                 {item.plan}
               </span>
-              <span className="text-sm text-slate-500">{item.users} users</span>
+              <span className="text-xs font-medium text-slate-400">
+                {percentage}%
+              </span>
             </div>
-            <div className="h-2 rounded-full bg-slate-200">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-cyan-400"
-                style={{
-                  width: `${Math.max(percentage, item.users > 0 ? 8 : 0)}%`,
-                }}
-              />
-            </div>
-            <div className="text-sm font-medium text-slate-700 sm:text-right">
-              {percentage}%
+            <div className="mt-3">
+              <p className="text-2xl font-semibold text-slate-900">{item.users}</p>
+              <p className="text-sm text-slate-500">
+                {item.users === 1 ? "user" : "users"}
+              </p>
             </div>
           </div>
         );
