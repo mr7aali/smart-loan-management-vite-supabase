@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Bird, Lock, Mail, User, ArrowRight } from "lucide-react";
+import { Lock, Mail, User, ArrowRight } from "lucide-react";
 
 interface AuthPageProps {
   onSignIn: (email: string, password: string) => Promise<any>;
@@ -54,8 +54,12 @@ export default function AuthPage({ onSignIn, onSignUp }: AuthPageProps) {
     <div className="flex items-center justify-center min-h-screen p-4 bg-gradient-to-br from-indigo-900 via-purple-900 to-indigo-950 sm:p-6">
       <div className="w-full max-w-md">
         <div className="mb-6 text-center sm:mb-8">
-          <div className="inline-flex items-center justify-center mb-4 shadow-lg h-14 w-14 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 sm:h-16 sm:w-16">
-            <Bird className="w-8 h-8 text-white sm:h-10 sm:w-10" />
+          <div className="inline-flex items-center justify-center mb-4 h-20 w-20 rounded-3xl bg-white p-1 shadow-2xl ring-1 ring-white/20 sm:h-24 sm:w-24">
+            <img
+              src="/images/logo.png"
+              alt="LendSmart logo"
+              className="object-contain w-[92%] h-[92%]"
+            />
           </div>
           <h1 className="mb-2 text-3xl font-bold text-white sm:text-4xl">
             LendSmart

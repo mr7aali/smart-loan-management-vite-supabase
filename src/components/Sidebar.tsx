@@ -8,7 +8,6 @@ import {
   ChevronLeft,
   ChevronRight,
   CreditCard,
-  Sparkles,
   HelpCircle,
   LogOut,
 } from "lucide-react";
@@ -78,24 +77,28 @@ export default function Sidebar({
       )}
 
       <aside className={`${asideClasses} ${isMobile ? "" : "flex flex-col"}`}>
-        <div className="flex items-center justify-between border-b border-indigo-800 p-4">
+        <div className="flex items-center justify-between p-4 border-b border-indigo-800">
           {showLabels && (
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 to-orange-500">
-              <Sparkles className="h-5 w-5 text-white" />
+            <div className="flex items-center gap-2">
+              <div className="flex items-center justify-center w-10 h-10 p-1 bg-white rounded-lg shadow-sm">
+                <img
+                  src="/images/logo.png"
+                  alt="LendSmart logo"
+                  className="object-contain w-full h-full"
+                />
+              </div>
+              <span className="text-xl font-bold">LendSmart</span>
             </div>
-            <span className="text-xl font-bold">LendSmart</span>
-          </div>
           )}
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className="rounded-lg p-2 transition-colors hover:bg-indigo-800"
+            className="p-2 transition-colors rounded-lg hover:bg-indigo-800"
             aria-label={isOpen ? "Collapse navigation" : "Expand navigation"}
           >
             {isOpen || isMobile ? (
-              <ChevronLeft className="h-5 w-5" />
+              <ChevronLeft className="w-5 h-5" />
             ) : (
-              <ChevronRight className="h-5 w-5" />
+              <ChevronRight className="w-5 h-5" />
             )}
           </button>
         </div>
@@ -113,14 +116,14 @@ export default function Sidebar({
                     : "hover:bg-indigo-800"
                 } ${!showLabels ? "justify-center px-2" : ""}`}
               >
-                <Icon className="h-5 w-5 shrink-0" />
+                <Icon className="w-5 h-5 shrink-0" />
                 {showLabels && <span>{item.label}</span>}
               </button>
             );
           })}
         </nav>
 
-        <div className="space-y-2 border-t border-indigo-800 p-4">
+        <div className="p-4 space-y-2 border-t border-indigo-800">
           <button
             onClick={() => handleSectionChange("settings")}
             className={`flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left transition-colors ${
@@ -129,7 +132,7 @@ export default function Sidebar({
                 : "hover:bg-indigo-800"
             } ${!showLabels ? "justify-center px-2" : ""}`}
           >
-            <Settings className="h-5 w-5 shrink-0" />
+            <Settings className="w-5 h-5 shrink-0" />
             {showLabels && <span>Settings</span>}
           </button>
 
@@ -139,14 +142,14 @@ export default function Sidebar({
               !showLabels ? "justify-center px-2" : ""
             }`}
           >
-            <LogOut className="h-5 w-5 shrink-0" />
+            <LogOut className="w-5 h-5 shrink-0" />
             {showLabels && <span>Logout</span>}
           </button>
         </div>
 
         {showLabels && (
-          <div className="border-t border-indigo-800 p-4">
-            <div className="text-center text-xs text-indigo-300">
+          <div className="p-4 border-t border-indigo-800">
+            <div className="text-xs text-center text-indigo-300">
               LendSmart v1.0.0
             </div>
           </div>

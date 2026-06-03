@@ -580,6 +580,8 @@ function App() {
           title={activeSection}
           onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
           user={user}
+          onOpenSettings={() => handleSectionChange("settings")}
+          onSignOut={handleSignOut}
         />
         <main className="flex-1 overflow-auto p-4 sm:p-6">
           <Routes>
