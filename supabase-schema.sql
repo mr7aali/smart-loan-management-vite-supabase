@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   role TEXT DEFAULT 'user' CHECK (role IN ('user', 'admin')),
   account_status TEXT DEFAULT 'active' CHECK (account_status IN ('active', 'suspended')),
   plan TEXT DEFAULT 'free' CHECK (plan IN ('free', 'starter', 'professional', 'enterprise')),
+  currency TEXT DEFAULT 'USD' CHECK (currency IN ('USD', 'EUR', 'ZAR', 'LSL')),
   max_borrowers INTEGER DEFAULT 10,
   max_loans INTEGER DEFAULT 20,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

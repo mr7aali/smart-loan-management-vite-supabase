@@ -1,18 +1,19 @@
 import { Loan, Borrower, Repayment } from '../types';
-import { formatCurrency, formatDate, getBorrowerById, getLoanProgress, getRemainingAmount } from '../utils';
+import { AppCurrency, formatCurrency, formatDate, getBorrowerById, getLoanProgress, getRemainingAmount } from '../utils';
 import { Plus, Search, Trash2, Eye, FileText, DollarSign, Calendar, AlertTriangle } from 'lucide-react';
 import { useState } from 'react';
 
 interface LoansProps {
   loans: Loan[];
   borrowers: Borrower[];
+  currency: AppCurrency;
   repayments: Repayment[];
   onAdd: () => void;
   onDelete: (id: string) => void;
   onSelect: (loan: Loan) => void;
 }
 
-export default function Loans({ loans, borrowers, repayments, onAdd, onDelete, onSelect }: LoansProps) {
+export default function Loans({ loans, borrowers, currency, repayments, onAdd, onDelete, onSelect }: LoansProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedLoan, setSelectedLoan] = useState<Loan | null>(null);
@@ -82,7 +83,100 @@ export default function Loans({ loans, borrowers, repayments, onAdd, onDelete, o
         </div>
       ) : (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="overflow-x-auto">
+          <div className="divide-y divide-gray-100 md:hidden">
+            {filteredLoans.map((loan) => {
+              const borrower = getBorrowerById(borrowers, loan.borrowerId);
+              const progress = getLoanProgress(loan, repayments);
+              const remaining = getRemainingAmount(loan, repayments);
+              const isOverdue = loan.status === 'active' && new Date(loan.dueDate) < new Date();
+
+              return (
+                <div key={loan.id} className="space-y-4 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-sm font-bold text-white">
+                        {borrower?.name.charAt(0).toUpperCase() || '?'}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-gray-800">{borrower?.name || 'Unknown'}</p>
+                        <p className="text-xs text-gray-500">Loan ID: {loan.id.slice(-6)}</p>
+                      </div>
+                    </div>
+                    <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium ${
+                      loan.status === 'paid' ? 'bg-emerald-100 text-emerald-700' :
+                      isOverdue ? 'bg-red-100 text-red-700' :
+                      'bg-indigo-100 text-indigo-700'
+                    }`}>
+                      {loan.status === 'paid' ? 'Paid' : isOverdue ? 'Overdue' : 'Active'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="rounded-xl bg-gray-50 p-3">
+                      <p className="text-xs uppercase tracking-wide text-gray-400">Amount</p>
+                      <p className="mt-1 font-semibold text-gray-800">{formatCurrency(loan.amount, currency)}</p>
+                    </div>
+                    <div className="rounded-xl bg-gray-50 p-3">
+                      <p className="text-xs uppercase tracking-wide text-gray-400">Remaining</p>
+                      <p className="mt-1 font-semibold text-amber-600">{formatCurrency(remaining, currency)}</p>
+                    </div>
+                    <div className="rounded-xl bg-gray-50 p-3">
+                      <p className="text-xs uppercase tracking-wide text-gray-400">Interest</p>
+                      <p className="mt-1 text-gray-700">{loan.interestRate}%</p>
+                    </div>
+                    <div className="rounded-xl bg-gray-50 p-3">
+                      <p className="text-xs uppercase tracking-wide text-gray-400">Term</p>
+                      <p className="mt-1 text-gray-700">{loan.termMonths} months</p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl bg-gray-50 p-3">
+                    <div className="mb-2 flex items-center gap-2 text-sm">
+                      {isOverdue && <AlertTriangle className="h-4 w-4 text-red-500" />}
+                      <span className={isOverdue ? 'font-medium text-red-600' : 'text-gray-600'}>
+                        Due {formatDate(loan.dueDate)}
+                      </span>
+                    </div>
+                    <div className="mb-1 flex items-center justify-between text-xs text-gray-500">
+                      <span>{progress.toFixed(0)}% repaid</span>
+                      <span>{formatCurrency(remaining, currency)} left</span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-gray-200">
+                      <div
+                        className={`h-full rounded-full ${
+                          loan.status === 'paid' ? 'bg-emerald-500' :
+                          isOverdue ? 'bg-red-500' : 'bg-indigo-500'
+                        }`}
+                        style={{ width: `${progress}%` }}
+                      ></div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => {
+                        onSelect(loan);
+                        setSelectedLoan(loan);
+                      }}
+                      className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                    >
+                      <Eye className="h-4 w-4" />
+                      View
+                    </button>
+                    <button
+                      onClick={() => onDelete(loan.id)}
+                      className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-red-100 px-4 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="hidden overflow-x-auto md:block">
             <table className="min-w-[760px] w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
@@ -117,7 +211,7 @@ export default function Loans({ loans, borrowers, repayments, onAdd, onDelete, o
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <p className="font-semibold text-gray-800">{formatCurrency(loan.amount)}</p>
+                        <p className="font-semibold text-gray-800">{formatCurrency(loan.amount, currency)}</p>
                       </td>
                       <td className="px-6 py-4">
                         <p className="text-gray-600">{loan.interestRate}%</p>
@@ -137,7 +231,7 @@ export default function Loans({ loans, borrowers, repayments, onAdd, onDelete, o
                         <div className="w-32">
                           <div className="flex justify-between text-xs mb-1">
                             <span className="text-gray-500">{progress.toFixed(0)}%</span>
-                            <span className="text-gray-500">{formatCurrency(remaining)} left</span>
+                            <span className="text-gray-500">{formatCurrency(remaining, currency)} left</span>
                           </div>
                           <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                             <div
@@ -162,7 +256,10 @@ export default function Loans({ loans, borrowers, repayments, onAdd, onDelete, o
                       <td className="px-6 py-4">
                         <div className="flex justify-end gap-2">
                           <button
-                            onClick={() => setSelectedLoan(loan)}
+                            onClick={() => {
+                              onSelect(loan);
+                              setSelectedLoan(loan);
+                            }}
                             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                             title="View Details"
                           >
@@ -224,11 +321,11 @@ export default function Loans({ loans, borrowers, repayments, onAdd, onDelete, o
                     <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">
                       <div className="p-4 bg-gray-50 rounded-xl">
                         <p className="text-sm text-gray-500 mb-1">Loan Amount</p>
-                        <p className="text-2xl font-bold text-gray-800">{formatCurrency(selectedLoan.amount)}</p>
+                        <p className="text-2xl font-bold text-gray-800">{formatCurrency(selectedLoan.amount, currency)}</p>
                       </div>
                       <div className="p-4 bg-gray-50 rounded-xl">
                         <p className="text-sm text-gray-500 mb-1">Remaining</p>
-                        <p className="text-2xl font-bold text-amber-600">{formatCurrency(remaining)}</p>
+                        <p className="text-2xl font-bold text-amber-600">{formatCurrency(remaining, currency)}</p>
                       </div>
                       <div className="p-4 bg-gray-50 rounded-xl">
                         <p className="text-sm text-gray-500 mb-1">Interest Rate</p>
@@ -252,7 +349,7 @@ export default function Loans({ loans, borrowers, repayments, onAdd, onDelete, o
                       <p className="text-sm text-gray-500 mb-2">Repayment Progress</p>
                       <div className="mb-2 flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-between">
                         <span className="text-gray-600">{progress.toFixed(1)}% complete</span>
-                        <span className="font-medium text-gray-800">{formatCurrency(selectedLoan.amount - remaining)} / {formatCurrency(selectedLoan.amount)}</span>
+                        <span className="font-medium text-gray-800">{formatCurrency(selectedLoan.amount - remaining, currency)} / {formatCurrency(selectedLoan.amount, currency)}</span>
                       </div>
                       <div className="h-4 bg-gray-100 rounded-full overflow-hidden">
                         <div
@@ -271,7 +368,7 @@ export default function Loans({ loans, borrowers, repayments, onAdd, onDelete, o
                           {loanRepayments.map(repayment => (
                             <div key={repayment.id} className="flex flex-col gap-2 rounded-xl bg-gray-50 p-4 sm:flex-row sm:items-center sm:justify-between">
                               <div>
-                                <p className="font-medium text-gray-800">{formatCurrency(repayment.amount)}</p>
+                                <p className="font-medium text-gray-800">{formatCurrency(repayment.amount, currency)}</p>
                                 <p className="text-sm text-gray-500">{formatDate(repayment.date)}</p>
                               </div>
                               <span className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-medium">

@@ -1,21 +1,44 @@
-import { Settings, Bell, Shield, Database, Globe, LogOut } from "lucide-react";
-import { useState } from "react";
+import { Settings, Bell, Shield, Database, LogOut } from "lucide-react";
+import { useEffect, useState } from "react";
 import { User } from "@supabase/supabase-js";
+import { AppCurrency, normalizeCurrency, SUPPORTED_CURRENCIES } from "../utils";
+import { UserProfile } from "../types";
 
 interface SettingsProps {
   user?: User | null;
   onSignOut: () => void;
+  onUpdateCurrency: (currency: AppCurrency) => Promise<void>;
+  profile?: UserProfile | null;
   subscription?: any;
 }
 
 export default function SettingsPage({
   user,
   onSignOut,
+  onUpdateCurrency,
+  profile,
   subscription,
 }: SettingsProps) {
   const [notifications, setNotifications] = useState(true);
   const [autoReminders, setAutoReminders] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
+  const [selectedCurrency, setSelectedCurrency] = useState<AppCurrency>(
+    normalizeCurrency(profile?.currency),
+  );
+  const [currencySaving, setCurrencySaving] = useState(false);
+
+  useEffect(() => {
+    setSelectedCurrency(normalizeCurrency(profile?.currency));
+  }, [profile?.currency]);
+
+  const handleCurrencySave = async () => {
+    setCurrencySaving(true);
+    try {
+      await onUpdateCurrency(selectedCurrency);
+    } finally {
+      setCurrencySaving(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -89,6 +112,42 @@ export default function SettingsPage({
                   }`}
                 ></div>
               </button>
+            </div>
+            <div className="flex flex-col gap-4 rounded-xl bg-gray-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-medium text-gray-800">Display Currency</p>
+                <p className="text-sm text-gray-500">
+                  Applies to dashboard, loans, and repayments only.
+                </p>
+              </div>
+              <div className="flex w-full flex-col gap-3 sm:w-auto sm:min-w-[260px]">
+                <select
+                  value={selectedCurrency}
+                  onChange={(event) =>
+                    setSelectedCurrency(
+                      normalizeCurrency(event.target.value as AppCurrency),
+                    )
+                  }
+                  className="w-full rounded-lg border border-gray-200 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  {SUPPORTED_CURRENCIES.map((currencyOption) => (
+                    <option key={currencyOption.code} value={currencyOption.code}>
+                      {currencyOption.label}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => void handleCurrencySave()}
+                  disabled={
+                    currencySaving ||
+                    selectedCurrency === normalizeCurrency(profile?.currency)
+                  }
+                  className="w-full rounded-lg bg-indigo-600 px-4 py-2 text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {currencySaving ? "Saving..." : "Save Currency"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -185,8 +244,12 @@ export default function SettingsPage({
           </h3>
           <div className="p-4 bg-gray-50 rounded-xl">
             <div className="flex items-center gap-4 mb-4">
-              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500">
-                <Globe className="w-6 h-6 text-white" />
+              <div className="flex items-center justify-center w-12 h-12 p-1 bg-white rounded-xl shadow-sm ring-1 ring-slate-200">
+                <img
+                  src="/images/logo.png"
+                  alt="LendSmart logo"
+                  className="object-contain w-full h-full"
+                />
               </div>
               <div>
                 <p className="font-bold text-gray-800">LendSmart</p>

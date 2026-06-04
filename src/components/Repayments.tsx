@@ -1,5 +1,7 @@
 import { Repayment, Loan, Borrower } from '../types';
 import {
+  AppCurrency,
+  formatCompactCurrency,
   formatCurrency,
   formatDate,
   getBorrowerById,
@@ -24,6 +26,7 @@ interface RepaymentsProps {
   repayments: Repayment[];
   loans: Loan[];
   borrowers: Borrower[];
+  currency: AppCurrency;
   onAdd: () => void;
 }
 
@@ -34,7 +37,7 @@ const methodMeta = {
   other: { label: 'Other', icon: ReceiptText },
 } as const;
 
-export default function Repayments({ repayments, loans, borrowers, onAdd }: RepaymentsProps) {
+export default function Repayments({ repayments, loans, borrowers, currency, onAdd }: RepaymentsProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [methodFilter, setMethodFilter] = useState('all');
 
@@ -70,39 +73,41 @@ export default function Repayments({ repayments, loans, borrowers, onAdd }: Repa
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-3">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center">
-              <DollarSign className="w-6 h-6 text-emerald-600" />
+      <div className="grid grid-cols-3 gap-2 sm:gap-6 md:grid-cols-3">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-2.5 sm:rounded-xl sm:p-6">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <div className="h-8 w-8 rounded-lg bg-emerald-100 flex items-center justify-center sm:h-12 sm:w-12 sm:rounded-xl">
+              <DollarSign className="h-4 w-4 text-emerald-600 sm:h-6 sm:w-6" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Total Collected</p>
-              <p className="text-2xl font-bold text-gray-800">{formatCurrency(totalCollected)}</p>
+              <p className="text-[10px] uppercase tracking-[0.12em] text-gray-500 sm:text-sm sm:normal-case sm:tracking-normal">Collected</p>
+              <p className="text-sm font-bold text-gray-800 sm:hidden">{formatCompactCurrency(totalCollected, currency)}</p>
+              <p className="hidden text-2xl font-bold text-gray-800 sm:block">{formatCurrency(totalCollected, currency)}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center">
-              <Calendar className="w-6 h-6 text-indigo-600" />
+        <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-2.5 sm:rounded-xl sm:p-6">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <div className="h-8 w-8 rounded-lg bg-indigo-100 flex items-center justify-center sm:h-12 sm:w-12 sm:rounded-xl">
+              <Calendar className="h-4 w-4 text-indigo-600 sm:h-6 sm:w-6" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">This Month</p>
-              <p className="text-2xl font-bold text-gray-800">{formatCurrency(thisMonth)}</p>
+              <p className="text-[10px] uppercase tracking-[0.12em] text-gray-500 sm:text-sm sm:normal-case sm:tracking-normal">Month</p>
+              <p className="text-sm font-bold text-gray-800 sm:hidden">{formatCompactCurrency(thisMonth, currency)}</p>
+              <p className="hidden text-2xl font-bold text-gray-800 sm:block">{formatCurrency(thisMonth, currency)}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center">
-              <ArrowUpRight className="w-6 h-6 text-purple-600" />
+        <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-2.5 sm:rounded-xl sm:p-6">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <div className="h-8 w-8 rounded-lg bg-purple-100 flex items-center justify-center sm:h-12 sm:w-12 sm:rounded-xl">
+              <ArrowUpRight className="h-4 w-4 text-purple-600 sm:h-6 sm:w-6" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Transactions</p>
-              <p className="text-2xl font-bold text-gray-800">{filteredRepayments.length}</p>
+              <p className="text-[10px] uppercase tracking-[0.12em] text-gray-500 sm:text-sm sm:normal-case sm:tracking-normal">Txns</p>
+              <p className="text-sm font-bold text-gray-800 sm:text-2xl">{filteredRepayments.length}</p>
             </div>
           </div>
         </div>
@@ -161,7 +166,54 @@ export default function Repayments({ repayments, loans, borrowers, onAdd }: Repa
         </div>
       ) : (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="overflow-x-auto">
+          <div className="divide-y divide-gray-100 md:hidden">
+            {sortedRepayments.map((repayment) => {
+              const loan = loans.find((item) => item.id === getRepaymentLoanId(repayment));
+              const borrower =
+                loan?.borrowers ||
+                (loan ? getBorrowerById(borrowers, getLoanBorrowerId(loan)) : undefined);
+              const borrowerName = getBorrowerName(borrower);
+              const MethodIcon = methodMeta[repayment.method]?.icon || ReceiptText;
+              const methodLabel = methodMeta[repayment.method]?.label || 'Other';
+
+              return (
+                <div key={repayment.id} className="space-y-4 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-gray-800">{borrowerName}</p>
+                      <p className="text-xs text-gray-500">Loan #{loan?.id.slice(-6) || 'Unknown'}</p>
+                    </div>
+                    <p className="shrink-0 text-base font-semibold text-emerald-600">
+                      {formatCurrency(repayment.amount, currency)}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="rounded-xl bg-gray-50 p-3">
+                      <p className="text-xs uppercase tracking-wide text-gray-400">Date</p>
+                      <p className="mt-1 font-medium text-gray-700">{formatDate(repayment.date)}</p>
+                    </div>
+                    <div className="rounded-xl bg-gray-50 p-3">
+                      <p className="text-xs uppercase tracking-wide text-gray-400">Method</p>
+                      <div className="mt-1 flex items-center gap-2 text-gray-700">
+                        <MethodIcon className="h-4 w-4 text-gray-500" />
+                        <span>{methodLabel}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl bg-gray-50 p-3">
+                    <p className="text-xs uppercase tracking-wide text-gray-400">Notes</p>
+                    <p className="mt-1 text-sm text-gray-600">
+                      {repayment.notes || '-'}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="hidden overflow-x-auto md:block">
             <table className="min-w-[760px] w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
@@ -200,7 +252,7 @@ export default function Repayments({ repayments, loans, borrowers, onAdd }: Repa
                         <span className="text-sm text-gray-500">#{loan?.id.slice(-6) || 'Unknown'}</span>
                       </td>
                       <td className="px-6 py-4">
-                        <p className="font-semibold text-emerald-600">{formatCurrency(repayment.amount)}</p>
+                        <p className="font-semibold text-emerald-600">{formatCurrency(repayment.amount, currency)}</p>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">

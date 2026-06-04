@@ -44,6 +44,8 @@ import {
 } from "./lib/subscription-plans";
 import {
   getLoanStatus,
+  DEFAULT_CURRENCY,
+  normalizeCurrency,
   normalizeBorrower,
   normalizeLoan,
   normalizeRepayment,
@@ -149,6 +151,7 @@ function App() {
   const [adminUsersLoading, setAdminUsersLoading] = useState(false);
   const activeSection = getSectionFromPathname(location.pathname);
   const isAdmin = profile?.role === "admin";
+  const activeCurrency = normalizeCurrency(profile?.currency || DEFAULT_CURRENCY);
   const hasOverlayOpen =
     sidebarOpen ||
     showAddBorrower ||
@@ -205,8 +208,14 @@ function App() {
 
   const loadProfile = async (userId: string) => {
     const { data } = await db.getProfile(userId);
-    setProfile((data as UserProfile) || null);
-    return (data as UserProfile) || null;
+    const normalizedProfile = data
+      ? ({
+          ...(data as UserProfile),
+          currency: normalizeCurrency((data as UserProfile).currency),
+        } as UserProfile)
+      : null;
+    setProfile(normalizedProfile);
+    return normalizedProfile;
   };
 
   const loadAdminOverview = async () => {
@@ -597,6 +606,34 @@ function App() {
     navigate("/subscription", { replace: true });
   };
 
+  const handleCurrencyChange = async (currency: typeof activeCurrency) => {
+    if (!user) return;
+
+    try {
+      const normalizedCurrency = normalizeCurrency(currency);
+      const { data, error } = await db.updateProfile(user.id, {
+        currency: normalizedCurrency,
+      });
+
+      if (error) throw error;
+
+      setProfile((currentProfile) =>
+        currentProfile
+          ? {
+              ...currentProfile,
+              ...(data as Partial<UserProfile> | null),
+              currency: normalizedCurrency,
+            }
+          : currentProfile,
+      );
+
+      alert("Currency preference updated.");
+    } catch (error) {
+      console.error("Error updating currency preference:", error);
+      throw error;
+    }
+  };
+
   const handleResendVerification = async () => {
     if (!user?.email) {
       throw new Error("Missing email address for verification.");
@@ -709,7 +746,7 @@ function App() {
   }
 
   return (
-    <div className="flex max-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gray-50">
       <Sidebar
         activeSection={activeSection}
         setActiveSection={handleSectionChange}
@@ -719,7 +756,7 @@ function App() {
         onSignOut={handleSignOut}
         isAdmin={isAdmin}
       />
-      <div className="flex min-h-screen flex-1 flex-col">
+      <div className="flex min-h-screen min-w-0 flex-1 flex-col md:h-screen">
         <Header
           title={activeSection}
           onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
@@ -732,7 +769,7 @@ function App() {
           onOpenSettings={() => handleSectionChange("settings")}
           onSignOut={handleSignOut}
         />
-        <main className="flex-1 overflow-auto p-4 sm:p-6">
+        <main className="min-h-0 flex-1 overflow-auto p-3 sm:p-6">
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route
@@ -740,6 +777,7 @@ function App() {
               element={
                 <Dashboard
                   borrowers={borrowers}
+                  currency={activeCurrency}
                   loans={loans}
                   repayments={repayments}
                 />
@@ -764,6 +802,7 @@ function App() {
                 <Loans
                   loans={loans}
                   borrowers={borrowers}
+                  currency={activeCurrency}
                   repayments={repayments}
                   onAdd={() => setShowAddLoan(true)}
                   onDelete={handleDeleteLoan}
@@ -778,6 +817,7 @@ function App() {
                   repayments={repayments}
                   loans={loans}
                   borrowers={borrowers}
+                  currency={activeCurrency}
                   onAdd={() => setShowAddRepayment(true)}
                 />
               }
@@ -816,7 +856,9 @@ function App() {
               element={
                 <Settings
                   user={user}
+                  profile={profile}
                   onSignOut={handleSignOut}
+                  onUpdateCurrency={handleCurrencyChange}
                   subscription={subscription}
                 />
               }
@@ -874,6 +916,7 @@ function App() {
       {showAddLoan && (
         <AddLoanModal
           borrowers={borrowers}
+          currency={activeCurrency}
           onClose={() => setShowAddLoan(false)}
           onAdd={handleAddLoan}
         />
@@ -883,6 +926,7 @@ function App() {
         <AddRepaymentModal
           loans={loans.filter((loan) => loan.status === "active")}
           borrowers={borrowers}
+          currency={activeCurrency}
           onClose={() => setShowAddRepayment(false)}
           onAdd={handleAddRepayment}
         />

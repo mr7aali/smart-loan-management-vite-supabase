@@ -1,13 +1,13 @@
 import { Loan, Repayment, Borrower } from './types';
 
-export const formatCurrency = (amount: number): string => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(amount);
-};
+export {
+  DEFAULT_CURRENCY,
+  formatCompactCurrency,
+  formatCurrency,
+  normalizeCurrency,
+  SUPPORTED_CURRENCIES,
+  type AppCurrency,
+} from "./lib/currency";
 
 export const formatDate = (date: string): string => {
   if (!date) return '-';
