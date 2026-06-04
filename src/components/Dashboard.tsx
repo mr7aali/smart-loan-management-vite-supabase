@@ -347,7 +347,9 @@ export default function Dashboard({ borrowers, loans, repayments }: DashboardPro
               <AreaChart data={monthlyData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis dataKey="name" stroke="#9ca3af" fontSize={12} />
-                <YAxis stroke="#9ca3af" fontSize={12} tickFormatter={(value) => `$${value / 1000}k`} />
+                {!isMobile && (
+                  <YAxis stroke="#9ca3af" fontSize={12} tickFormatter={(value) => `$${value / 1000}k`} />
+                )}
                 <Tooltip
                   formatter={(value: number) => [formatCurrency(value), '']}
                   contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb' }}
@@ -420,7 +422,7 @@ export default function Dashboard({ borrowers, loans, repayments }: DashboardPro
               <BarChart data={topBorrowers} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis type="number" stroke="#9ca3af" fontSize={12} tickFormatter={(value) => `$${value / 1000}k`} />
-                <YAxis type="category" dataKey="name" stroke="#9ca3af" fontSize={12} width={isMobile ? 72 : 100} />
+                <YAxis type="category" dataKey="name" stroke="#9ca3af" fontSize={12} width={isMobile ? 56 : 100} />
                 <Tooltip formatter={(value: number) => [formatCurrency(value), 'Total Loans']} />
                 <Bar dataKey="total" fill="#6366f1" radius={[0, 8, 8, 0]} />
               </BarChart>

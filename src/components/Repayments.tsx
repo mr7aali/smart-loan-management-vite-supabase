@@ -161,7 +161,54 @@ export default function Repayments({ repayments, loans, borrowers, onAdd }: Repa
         </div>
       ) : (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="overflow-x-auto">
+          <div className="divide-y divide-gray-100 md:hidden">
+            {sortedRepayments.map((repayment) => {
+              const loan = loans.find((item) => item.id === getRepaymentLoanId(repayment));
+              const borrower =
+                loan?.borrowers ||
+                (loan ? getBorrowerById(borrowers, getLoanBorrowerId(loan)) : undefined);
+              const borrowerName = getBorrowerName(borrower);
+              const MethodIcon = methodMeta[repayment.method]?.icon || ReceiptText;
+              const methodLabel = methodMeta[repayment.method]?.label || 'Other';
+
+              return (
+                <div key={repayment.id} className="space-y-4 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-gray-800">{borrowerName}</p>
+                      <p className="text-xs text-gray-500">Loan #{loan?.id.slice(-6) || 'Unknown'}</p>
+                    </div>
+                    <p className="shrink-0 text-base font-semibold text-emerald-600">
+                      {formatCurrency(repayment.amount)}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="rounded-xl bg-gray-50 p-3">
+                      <p className="text-xs uppercase tracking-wide text-gray-400">Date</p>
+                      <p className="mt-1 font-medium text-gray-700">{formatDate(repayment.date)}</p>
+                    </div>
+                    <div className="rounded-xl bg-gray-50 p-3">
+                      <p className="text-xs uppercase tracking-wide text-gray-400">Method</p>
+                      <div className="mt-1 flex items-center gap-2 text-gray-700">
+                        <MethodIcon className="h-4 w-4 text-gray-500" />
+                        <span>{methodLabel}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl bg-gray-50 p-3">
+                    <p className="text-xs uppercase tracking-wide text-gray-400">Notes</p>
+                    <p className="mt-1 text-sm text-gray-600">
+                      {repayment.notes || '-'}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="hidden overflow-x-auto md:block">
             <table className="min-w-[760px] w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>

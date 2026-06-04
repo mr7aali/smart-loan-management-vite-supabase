@@ -709,7 +709,7 @@ function App() {
   }
 
   return (
-    <div className="flex max-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gray-50">
       <Sidebar
         activeSection={activeSection}
         setActiveSection={handleSectionChange}
@@ -719,7 +719,7 @@ function App() {
         onSignOut={handleSignOut}
         isAdmin={isAdmin}
       />
-      <div className="flex min-h-screen flex-1 flex-col">
+      <div className="flex min-h-screen min-w-0 flex-1 flex-col md:h-screen">
         <Header
           title={activeSection}
           onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
@@ -732,7 +732,7 @@ function App() {
           onOpenSettings={() => handleSectionChange("settings")}
           onSignOut={handleSignOut}
         />
-        <main className="flex-1 overflow-auto p-4 sm:p-6">
+        <main className="min-h-0 flex-1 overflow-auto p-3 sm:p-6">
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route

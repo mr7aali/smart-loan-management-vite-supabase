@@ -294,7 +294,50 @@ export default function Reports({ borrowers, loans, repayments }: ReportsProps) 
             </div>
 
             <div className="overflow-x-auto">
-              <table className="min-w-[720px] w-full">
+              <div className="space-y-4 md:hidden">
+                {activeLoans.map((loan) => {
+                  const borrower = getBorrowerById(borrowers, getLoanBorrowerId(loan));
+                  const loanRepayments = repayments.filter((repayment) => getRepaymentLoanId(repayment) === loan.id);
+                  const totalPaid = loanRepayments.reduce((sum, repayment) => sum + repayment.amount, 0);
+                  const remaining = loan.amount - totalPaid;
+                  const progress = (totalPaid / loan.amount) * 100;
+
+                  return (
+                    <div key={loan.id} className="rounded-xl bg-gray-50 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold text-gray-800">{borrower?.name || 'Unknown'}</p>
+                          <p className="text-xs text-gray-500">Loan #{loan.id.slice(-6)}</p>
+                        </div>
+                        <span className="text-sm font-semibold text-gray-800">{formatCurrency(loan.amount)}</span>
+                      </div>
+
+                      <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                        <div className="rounded-lg bg-white p-3">
+                          <p className="text-xs uppercase tracking-wide text-gray-400">Paid</p>
+                          <p className="mt-1 font-medium text-emerald-600">{formatCurrency(totalPaid)}</p>
+                        </div>
+                        <div className="rounded-lg bg-white p-3">
+                          <p className="text-xs uppercase tracking-wide text-gray-400">Remaining</p>
+                          <p className="mt-1 font-medium text-amber-600">{formatCurrency(remaining)}</p>
+                        </div>
+                      </div>
+
+                      <div className="mt-4">
+                        <div className="mb-2 flex items-center justify-between text-xs text-gray-500">
+                          <span>Collection progress</span>
+                          <span>{progress.toFixed(0)}%</span>
+                        </div>
+                        <div className="h-2 overflow-hidden rounded-full bg-gray-200">
+                          <div className="h-full rounded-full bg-indigo-500" style={{ width: `${progress}%` }}></div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <table className="hidden min-w-[720px] w-full md:table">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Borrower</th>
@@ -351,12 +394,12 @@ export default function Reports({ borrowers, loans, repayments }: ReportsProps) 
             <div className="space-y-4">
               {topBorrowers.map((borrower, index) => (
                 <div key={borrower.id} className="flex flex-col gap-3 rounded-xl bg-gray-50 p-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex items-center gap-4">
+                  <div className="flex min-w-0 items-center gap-4">
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold">
                       #{index + 1}
                     </div>
-                    <div>
-                      <p className="font-medium text-gray-800">{borrower.name}</p>
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-gray-800">{borrower.name}</p>
                       <p className="text-sm text-gray-500">{borrower.phone}</p>
                     </div>
                   </div>

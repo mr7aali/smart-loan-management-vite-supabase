@@ -115,12 +115,12 @@ export default function Borrowers({
                 {/* Card Header */}
                 <div className="p-6 border-b border-gray-100">
                   <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-4">
+                    <div className="flex min-w-0 items-center gap-4">
                       <div className="flex items-center justify-center text-xl font-bold text-white rounded-full w-14 h-14 bg-gradient-to-br from-indigo-500 to-purple-600">
                         {borrower.name.charAt(0).toUpperCase()}
                       </div>
-                      <div>
-                        <h3 className="font-semibold text-gray-800">
+                      <div className="min-w-0">
+                        <h3 className="truncate font-semibold text-gray-800">
                           {borrower.name}
                         </h3>
                         <p className="text-sm text-gray-500">
@@ -287,7 +287,7 @@ export default function Borrowers({
                     {selectedBorrower.email}
                   </p>
                 </div>
-                <div className="col-span-2">
+                <div className="sm:col-span-2">
                   <p className="mb-1 text-sm text-gray-500">Address</p>
                   <p className="font-medium text-gray-800">
                     {selectedBorrower.address || "Not provided"}
@@ -310,7 +310,7 @@ export default function Borrowers({
                           key={loan.id}
                           className="p-4 bg-gray-50 rounded-xl"
                         >
-                          <div className="flex items-start justify-between mb-2">
+                          <div className="mb-2 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                             <div>
                               <p className="font-semibold text-gray-800">
                                 {formatCurrency(loan.amount)}

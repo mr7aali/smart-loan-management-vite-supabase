@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  Menu,
   Bell,
-  Search,
-  LogOut,
   ChevronDown,
+  LogOut,
+  Menu,
+  Search,
   Settings,
 } from "lucide-react";
 import { User } from "@supabase/supabase-js";
@@ -33,6 +33,19 @@ interface HeaderProps {
   onSignOut?: () => void;
 }
 
+const TITLES: Record<string, string> = {
+  dashboard: "Dashboard",
+  borrowers: "Borrowers",
+  loans: "Loans",
+  repayments: "Repayments",
+  reports: "Reports",
+  settings: "Settings",
+  subscription: "Subscription",
+  help: "Help",
+  "admin-overview": "Platform Overview",
+  "admin-users": "User Management",
+};
+
 export default function Header({
   title,
   onToggleSidebar,
@@ -53,23 +66,8 @@ export default function Header({
   const searchRef = useRef<HTMLDivElement>(null);
   const notificationsRef = useRef<HTMLDivElement>(null);
 
-  const getTitle = (section: string) => {
-    const titles: Record<string, string> = {
-      dashboard: "Dashboard",
-      borrowers: "Borrowers",
-      loans: "Loans",
-      repayments: "Repayments",
-      reports: "Reports",
-      settings: "Settings",
-      subscription: "Subscription",
-      help: "Help",
-      "admin-overview": "Platform Overview",
-      "admin-users": "User Management",
-    };
-    return (
-      titles[section] || section.charAt(0).toUpperCase() + section.slice(1)
-    );
-  };
+  const getTitle = (section: string) =>
+    TITLES[section] || section.charAt(0).toUpperCase() + section.slice(1);
 
   const getUserInitials = (email?: string) => {
     if (!email) return "U";
@@ -94,6 +92,7 @@ export default function Header({
               borrowers,
               loan.borrowerId || loan.borrower_id || "",
             );
+
             return (
               loan.id.toLowerCase().includes(normalizedSearchQuery) ||
               borrower?.name.toLowerCase().includes(normalizedSearchQuery)
@@ -136,6 +135,7 @@ export default function Header({
             (1000 * 60 * 60 * 24),
         )
       : null;
+
   const notifications = [
     ...(!user?.email_confirmed_at
       ? [
@@ -153,6 +153,7 @@ export default function Header({
         borrowers,
         loan.borrowerId || loan.borrower_id || "",
       );
+
       return {
         id: `overdue-${loan.id}`,
         title: `Overdue loan for ${borrower?.name || "Unknown borrower"}`,
@@ -169,6 +170,7 @@ export default function Header({
         borrowers,
         loan.borrowerId || loan.borrower_id || "",
       );
+
       return {
         id: `upcoming-${loan.id}`,
         title: `Upcoming payment from ${borrower?.name || "Unknown borrower"}`,
@@ -215,12 +217,14 @@ export default function Header({
       ) {
         setIsProfileMenuOpen(false);
       }
+
       if (
         searchRef.current &&
         !searchRef.current.contains(event.target as Node)
       ) {
         setIsSearchOpen(false);
       }
+
       if (
         notificationsRef.current &&
         !notificationsRef.current.contains(event.target as Node)
@@ -247,35 +251,35 @@ export default function Header({
   }, []);
 
   return (
-    <header className="px-4 py-3 bg-white border-b border-gray-200 shadow-sm sm:px-6 sm:py-4">
+    <header className="border-b border-gray-200 bg-white px-4 py-3 shadow-sm sm:px-6 sm:py-4">
       <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center min-w-0 gap-2 sm:gap-4">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-4">
           <button
             onClick={onToggleSidebar}
-            className="p-2 transition-colors rounded-lg hover:bg-gray-100"
+            className="rounded-lg p-2 transition-colors hover:bg-gray-100"
             aria-label="Toggle navigation"
           >
-            <Menu className="w-5 h-5 text-gray-600" />
+            <Menu className="h-5 w-5 text-gray-600" />
           </button>
-          <h1 className="text-lg font-bold text-gray-800 truncate sm:text-2xl">
+          <h1 className="truncate text-lg font-bold text-gray-800 sm:text-2xl">
             {getTitle(title)}
           </h1>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-4">
           <div ref={searchRef} className="relative hidden lg:block">
-            <Search className="absolute w-4 h-4 text-gray-400 -translate-y-1/2 left-3 top-1/2" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               onFocus={() => setIsSearchOpen(true)}
               placeholder="Search borrowers, loans, repayments..."
-              className="w-64 py-2 pl-10 pr-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-64 rounded-lg border border-gray-200 py-2 pl-10 pr-4 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
 
             {isSearchOpen && (
-              <div className="absolute right-0 z-20 mt-3 w-[26rem] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl">
+              <div className="absolute right-0 z-20 mt-3 w-[min(26rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl">
                 <div className="border-b border-gray-100 px-4 py-3">
                   <p className="text-sm font-semibold text-gray-800">
                     Quick Search
@@ -295,7 +299,7 @@ export default function Header({
                     searchResults.loans.length === 0 &&
                     searchResults.repayments.length === 0 ? (
                       <div className="rounded-xl px-3 py-6 text-center text-sm text-gray-500">
-                        No results matched “{searchQuery.trim()}”.
+                        No results matched "{searchQuery.trim()}".
                       </div>
                     ) : (
                       <>
@@ -337,6 +341,7 @@ export default function Header({
                                 borrowers,
                                 loan.borrowerId || loan.borrower_id || "",
                               );
+
                               return (
                                 <button
                                   key={loan.id}
@@ -349,7 +354,8 @@ export default function Header({
                                       {borrower?.name || "Unknown borrower"}
                                     </p>
                                     <p className="text-sm text-gray-500">
-                                      Loan #{loan.id.slice(-6)} • {formatCurrency(loan.amount)}
+                                      Loan #{loan.id.slice(-6)} -{" "}
+                                      {formatCurrency(loan.amount)}
                                     </p>
                                   </div>
                                   <span className="text-xs text-indigo-600">
@@ -378,7 +384,8 @@ export default function Header({
                                     {formatCurrency(repayment.amount)}
                                   </p>
                                   <p className="text-sm text-gray-500">
-                                    {formatDate(repayment.date)} • {repayment.method}
+                                    {formatDate(repayment.date)} -{" "}
+                                    {repayment.method}
                                   </p>
                                 </div>
                                 <span className="text-xs text-indigo-600">
@@ -400,23 +407,23 @@ export default function Header({
             <button
               type="button"
               onClick={() => setIsNotificationsOpen((open) => !open)}
-              className="relative p-2 transition-colors rounded-lg hover:bg-gray-100"
+              className="relative rounded-lg p-2 transition-colors hover:bg-gray-100"
               aria-label="Notifications"
               aria-expanded={isNotificationsOpen}
             >
-              <Bell className="w-5 h-5 text-gray-600" />
+              <Bell className="h-5 w-5 text-gray-600" />
               {notifications.length > 0 && (
                 <>
-                  <span className="absolute flex items-center justify-center w-5 h-5 text-[10px] font-semibold text-white bg-red-500 rounded-full -top-1 -right-1">
+                  <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-semibold text-white">
                     {Math.min(notifications.length, 9)}
                   </span>
-                  <span className="absolute w-2 h-2 bg-red-500 rounded-full top-1 right-1"></span>
+                  <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500"></span>
                 </>
               )}
             </button>
 
             {isNotificationsOpen && (
-              <div className="absolute right-0 z-20 mt-3 w-[24rem] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl">
+              <div className="absolute right-0 z-20 mt-3 w-[min(24rem,calc(100vw-1.5rem))] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl">
                 <div className="border-b border-gray-100 px-4 py-3">
                   <p className="text-sm font-semibold text-gray-800">
                     Notifications
@@ -428,7 +435,7 @@ export default function Header({
 
                 {notifications.length === 0 ? (
                   <div className="px-4 py-6 text-sm text-gray-500">
-                    You’re all caught up. No urgent alerts right now.
+                    You're all caught up. No urgent alerts right now.
                   </div>
                 ) : (
                   <div className="max-h-[28rem] overflow-y-auto p-2">
@@ -465,7 +472,7 @@ export default function Header({
 
           <div
             ref={profileMenuRef}
-            className="relative pl-2 border-l border-gray-200 sm:pl-4"
+            className="relative border-l border-gray-200 pl-2 sm:pl-4"
           >
             <button
               type="button"
@@ -475,11 +482,11 @@ export default function Header({
               aria-expanded={isProfileMenuOpen}
               aria-label="Open account menu"
             >
-              <div className="flex items-center justify-center text-sm font-bold text-white rounded-full shadow-sm h-9 w-9 bg-gradient-to-br from-indigo-500 to-purple-600 sm:h-10 sm:w-10">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-sm font-bold text-white shadow-sm sm:h-10 sm:w-10">
                 {getUserInitials(user?.email)}
               </div>
               <div className="hidden min-w-0 md:block">
-                <p className="font-medium text-gray-800 truncate">{userName}</p>
+                <p className="truncate font-medium text-gray-800">{userName}</p>
                 <p className="text-sm text-gray-500">LendSmart Account</p>
               </div>
               <ChevronDown
@@ -490,15 +497,15 @@ export default function Header({
             </button>
 
             {isProfileMenuOpen && (
-              <div className="absolute right-0 z-20 mt-3 overflow-hidden bg-white border border-gray-200 shadow-xl w-72 rounded-2xl">
-                <div className="px-4 py-4 text-white bg-gradient-to-r from-indigo-600 to-violet-600">
+              <div className="absolute right-0 z-20 mt-3 w-[min(18rem,calc(100vw-1.5rem))] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl">
+                <div className="bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-4 text-white">
                   <div className="flex items-center gap-3">
-                    <div className="flex items-center justify-center text-sm font-bold rounded-full h-11 w-11 bg-white/20 backdrop-blur-sm">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/20 text-sm font-bold backdrop-blur-sm">
                       {getUserInitials(user?.email)}
                     </div>
                     <div className="min-w-0">
-                      <p className="font-semibold truncate">{userName}</p>
-                      <p className="text-sm text-indigo-100 truncate">
+                      <p className="truncate font-semibold">{userName}</p>
+                      <p className="truncate text-sm text-indigo-100">
                         {user?.email || "No email available"}
                       </p>
                     </div>
@@ -512,9 +519,9 @@ export default function Header({
                       setIsProfileMenuOpen(false);
                       onOpenSettings?.();
                     }}
-                    className="flex items-center w-full gap-3 px-3 py-3 text-sm font-medium text-gray-700 transition-colors rounded-xl hover:bg-gray-50"
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
                   >
-                    <Settings className="w-4 h-4 text-indigo-500" />
+                    <Settings className="h-4 w-4 text-indigo-500" />
                     Account settings
                   </button>
 
@@ -524,9 +531,9 @@ export default function Header({
                       setIsProfileMenuOpen(false);
                       onSignOut?.();
                     }}
-                    className="flex items-center w-full gap-3 px-3 py-3 text-sm font-medium text-red-600 transition-colors rounded-xl hover:bg-red-50"
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
                   >
-                    <LogOut className="w-4 h-4" />
+                    <LogOut className="h-4 w-4" />
                     Sign out
                   </button>
                 </div>
