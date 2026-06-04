@@ -10,6 +10,7 @@ import {
   ReceiptText,
 } from 'lucide-react';
 import {
+  AppCurrency,
   formatCurrency,
   formatDate,
   getBorrowerById,
@@ -21,6 +22,7 @@ import {
 interface AddRepaymentModalProps {
   loans: Loan[];
   borrowers: Borrower[];
+  currency: AppCurrency;
   onClose: () => void;
   onAdd: (repayment: Omit<Repayment, 'id' | 'createdAt'>) => void;
 }
@@ -32,7 +34,7 @@ const methods = [
   { value: 'other', label: 'Other', icon: ReceiptText },
 ] as const;
 
-export default function AddRepaymentModal({ loans, borrowers, onClose, onAdd }: AddRepaymentModalProps) {
+export default function AddRepaymentModal({ loans, borrowers, currency, onClose, onAdd }: AddRepaymentModalProps) {
   const [formData, setFormData] = useState({
     loanId: '',
     amount: '',
@@ -113,7 +115,7 @@ export default function AddRepaymentModal({ loans, borrowers, onClose, onAdd }: 
 
                 return (
                   <option key={loan.id} value={loan.id}>
-                    {getBorrowerName(borrower)} - {formatCurrency(loan.amount)} (Due: {formatDate(getLoanDueDate(loan))})
+                    {getBorrowerName(borrower)} - {formatCurrency(loan.amount, currency)} (Due: {formatDate(getLoanDueDate(loan))})
                   </option>
                 );
               })}
@@ -124,7 +126,7 @@ export default function AddRepaymentModal({ loans, borrowers, onClose, onAdd }: 
           {selectedLoan && (
             <div className="p-4 bg-gray-50 rounded-xl">
               <p className="text-sm text-gray-500 mb-1">Loan Amount</p>
-              <p className="text-xl font-bold text-gray-800">{formatCurrency(selectedLoan.amount)}</p>
+              <p className="text-xl font-bold text-gray-800">{formatCurrency(selectedLoan.amount, currency)}</p>
               <p className="text-sm text-gray-500 mt-2">
                 Due Date: {formatDate(getLoanDueDate(selectedLoan))}
               </p>

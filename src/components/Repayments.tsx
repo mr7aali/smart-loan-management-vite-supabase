@@ -1,5 +1,7 @@
 import { Repayment, Loan, Borrower } from '../types';
 import {
+  AppCurrency,
+  formatCompactCurrency,
   formatCurrency,
   formatDate,
   getBorrowerById,
@@ -24,15 +26,9 @@ interface RepaymentsProps {
   repayments: Repayment[];
   loans: Loan[];
   borrowers: Borrower[];
+  currency: AppCurrency;
   onAdd: () => void;
 }
-
-const compactCurrencyFormatter = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  notation: "compact",
-  maximumFractionDigits: 1,
-});
 
 const methodMeta = {
   cash: { label: 'Cash', icon: Banknote },
@@ -41,7 +37,7 @@ const methodMeta = {
   other: { label: 'Other', icon: ReceiptText },
 } as const;
 
-export default function Repayments({ repayments, loans, borrowers, onAdd }: RepaymentsProps) {
+export default function Repayments({ repayments, loans, borrowers, currency, onAdd }: RepaymentsProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [methodFilter, setMethodFilter] = useState('all');
 
@@ -74,7 +70,6 @@ export default function Repayments({ repayments, loans, borrowers, onAdd }: Repa
       return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
     })
     .reduce((sum, repayment) => sum + repayment.amount, 0);
-  const compactCurrency = (value: number) => compactCurrencyFormatter.format(value);
 
   return (
     <div className="space-y-6">
@@ -86,8 +81,8 @@ export default function Repayments({ repayments, loans, borrowers, onAdd }: Repa
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-[0.12em] text-gray-500 sm:text-sm sm:normal-case sm:tracking-normal">Collected</p>
-              <p className="text-sm font-bold text-gray-800 sm:hidden">{compactCurrency(totalCollected)}</p>
-              <p className="hidden text-2xl font-bold text-gray-800 sm:block">{formatCurrency(totalCollected)}</p>
+              <p className="text-sm font-bold text-gray-800 sm:hidden">{formatCompactCurrency(totalCollected, currency)}</p>
+              <p className="hidden text-2xl font-bold text-gray-800 sm:block">{formatCurrency(totalCollected, currency)}</p>
             </div>
           </div>
         </div>
@@ -99,8 +94,8 @@ export default function Repayments({ repayments, loans, borrowers, onAdd }: Repa
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-[0.12em] text-gray-500 sm:text-sm sm:normal-case sm:tracking-normal">Month</p>
-              <p className="text-sm font-bold text-gray-800 sm:hidden">{compactCurrency(thisMonth)}</p>
-              <p className="hidden text-2xl font-bold text-gray-800 sm:block">{formatCurrency(thisMonth)}</p>
+              <p className="text-sm font-bold text-gray-800 sm:hidden">{formatCompactCurrency(thisMonth, currency)}</p>
+              <p className="hidden text-2xl font-bold text-gray-800 sm:block">{formatCurrency(thisMonth, currency)}</p>
             </div>
           </div>
         </div>
@@ -189,7 +184,7 @@ export default function Repayments({ repayments, loans, borrowers, onAdd }: Repa
                       <p className="text-xs text-gray-500">Loan #{loan?.id.slice(-6) || 'Unknown'}</p>
                     </div>
                     <p className="shrink-0 text-base font-semibold text-emerald-600">
-                      {formatCurrency(repayment.amount)}
+                      {formatCurrency(repayment.amount, currency)}
                     </p>
                   </div>
 
@@ -257,7 +252,7 @@ export default function Repayments({ repayments, loans, borrowers, onAdd }: Repa
                         <span className="text-sm text-gray-500">#{loan?.id.slice(-6) || 'Unknown'}</span>
                       </td>
                       <td className="px-6 py-4">
-                        <p className="font-semibold text-emerald-600">{formatCurrency(repayment.amount)}</p>
+                        <p className="font-semibold text-emerald-600">{formatCurrency(repayment.amount, currency)}</p>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">

@@ -1,5 +1,7 @@
 import { Borrower, Loan, Repayment } from "../types";
 import {
+  AppCurrency,
+  formatCompactCurrency,
   formatCurrency,
   formatDate,
   getLoanProgress,
@@ -37,20 +39,16 @@ import { useIsMobile } from "../hooks/use-mobile";
 
 interface DashboardProps {
   borrowers: Borrower[];
+  currency: AppCurrency;
   loans: Loan[];
   repayments: Repayment[];
 }
 
 const COLORS = ["#6366f1", "#10b981", "#f59e0b", "#ef4444"];
-const compactCurrencyFormatter = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  notation: "compact",
-  maximumFractionDigits: 1,
-});
 
 export default function Dashboard({
   borrowers,
+  currency,
   loans,
   repayments,
 }: DashboardProps) {
@@ -86,7 +84,6 @@ export default function Dashboard({
       .reduce((s, r) => s + r.amount, 0);
     return sum + (getLoanAmount(l) - paid);
   }, 0);
-  const compactCurrency = (value: number) => compactCurrencyFormatter.format(value);
 
   const stats = [
     {
@@ -112,8 +109,8 @@ export default function Dashboard({
     {
       title: "Total Disbursed",
       mobileTitle: "Sent",
-      value: formatCurrency(totalDisbursed),
-      mobileValue: compactCurrency(totalDisbursed),
+      value: formatCurrency(totalDisbursed, currency),
+      mobileValue: formatCompactCurrency(totalDisbursed, currency),
       change: "+15%",
       changeType: "positive" as const,
       icon: DollarSign,
@@ -309,19 +306,19 @@ export default function Dashboard({
             <div className="rounded-xl bg-gray-50 p-4">
               <p className="mb-1 text-sm text-gray-500">Total Disbursed</p>
               <p className="text-2xl font-bold text-gray-800">
-                {formatCurrency(totalDisbursed)}
+                {formatCurrency(totalDisbursed, currency)}
               </p>
             </div>
             <div className="rounded-xl bg-gray-50 p-4">
               <p className="mb-1 text-sm text-gray-500">Total Collected</p>
               <p className="text-2xl font-bold text-emerald-600">
-                {formatCurrency(totalCollected)}
+                {formatCurrency(totalCollected, currency)}
               </p>
             </div>
             <div className="rounded-xl bg-gray-50 p-4">
               <p className="mb-1 text-sm text-gray-500">Outstanding</p>
               <p className="text-2xl font-bold text-amber-600">
-                {formatCurrency(totalOutstanding)}
+                {formatCurrency(totalOutstanding, currency)}
               </p>
             </div>
           </div>
@@ -390,8 +387,8 @@ export default function Dashboard({
               <span className="text-gray-600">Avg. Loan Amount</span>
               <span className="font-bold text-gray-800">
                 {loans.length > 0
-                  ? formatCurrency(totalDisbursed / loans.length)
-                  : "$0"}
+                  ? formatCurrency(totalDisbursed / loans.length, currency)
+                  : formatCurrency(0, currency)}
               </span>
             </div>
             <div className="flex flex-col gap-1 rounded-xl bg-gray-50 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -403,13 +400,13 @@ export default function Dashboard({
             <div className="flex flex-col gap-1 rounded-xl bg-gray-50 p-4 sm:flex-row sm:items-center sm:justify-between">
               <span className="text-gray-600">This Month Repayments</span>
               <span className="font-bold text-emerald-600">
-                {formatCurrency(thisMonthRepayments)}
+                {formatCurrency(thisMonthRepayments, currency)}
               </span>
             </div>
             <div className="flex flex-col gap-1 rounded-xl bg-gray-50 p-4 sm:flex-row sm:items-center sm:justify-between">
               <span className="text-gray-600">Interest Earned</span>
               <span className="font-bold text-purple-600">
-                {formatCurrency(totalCollected - totalDisbursed)}
+                {formatCurrency(totalCollected - totalDisbursed, currency)}
               </span>
             </div>
           </div>
@@ -432,11 +429,16 @@ export default function Dashboard({
                   <YAxis
                     stroke="#9ca3af"
                     fontSize={12}
-                    tickFormatter={(value) => `$${value / 1000}k`}
+                    tickFormatter={(value) =>
+                      formatCompactCurrency(value, currency)
+                    }
                   />
                 )}
                 <Tooltip
-                  formatter={(value: number) => [formatCurrency(value), ""]}
+                  formatter={(value: number) => [
+                    formatCurrency(value, currency),
+                    "",
+                  ]}
                   contentStyle={{
                     borderRadius: "8px",
                     border: "1px solid #e5e7eb",
@@ -521,7 +523,9 @@ export default function Dashboard({
                   type="number"
                   stroke="#9ca3af"
                   fontSize={12}
-                  tickFormatter={(value) => `$${value / 1000}k`}
+                  tickFormatter={(value) =>
+                    formatCompactCurrency(value, currency)
+                  }
                 />
                 <YAxis
                   type="category"
@@ -532,7 +536,7 @@ export default function Dashboard({
                 />
                 <Tooltip
                   formatter={(value: number) => [
-                    formatCurrency(value),
+                    formatCurrency(value, currency),
                     "Total Loans",
                   ]}
                 />
@@ -590,7 +594,7 @@ export default function Dashboard({
                     </div>
                     <div className="sm:text-right">
                       <p className="font-bold text-gray-800">
-                        {formatCurrency(getLoanAmount(loan))}
+                        {formatCurrency(getLoanAmount(loan), currency)}
                       </p>
                       <div className="flex items-center gap-2">
                         <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
@@ -666,7 +670,7 @@ export default function Dashboard({
                     </div>
                     <div className="sm:text-right">
                       <p className="font-bold text-amber-600">
-                        {formatCurrency(remaining)}
+                        {formatCurrency(remaining, currency)}
                       </p>
                       <p
                         className={`text-xs font-medium ${

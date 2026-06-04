@@ -76,6 +76,7 @@ export interface UserProfile {
   role: UserRole;
   account_status: AccountStatus;
   plan: Subscription["plan"];
+  currency?: "USD" | "EUR" | "ZAR" | "LSL";
   max_borrowers?: number | null;
   max_loans?: number | null;
   created_at?: string;

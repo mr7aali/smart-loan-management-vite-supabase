@@ -102,6 +102,16 @@ export const db = {
     return { data, error };
   },
 
+  async updateProfile(userId: string, profile: any) {
+    const { data, error } = await supabase
+      .from('profiles')
+      .update(profile)
+      .eq('id', userId)
+      .select()
+      .single();
+    return { data, error };
+  },
+
   // Borrowers
   async getBorrowers(userId: string) {
     const { data, error } = await supabase

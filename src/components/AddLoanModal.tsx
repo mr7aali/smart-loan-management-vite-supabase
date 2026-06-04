@@ -1,15 +1,16 @@
 import { useState } from 'react';
 import { Loan, Borrower } from '../types';
 import { X, FileText, DollarSign, Calendar, Percent } from 'lucide-react';
-import { calculateEMI, calculateTotalPayable } from '../utils';
+import { AppCurrency, calculateEMI, calculateTotalPayable, formatCurrency } from '../utils';
 
 interface AddLoanModalProps {
   borrowers: Borrower[];
+  currency: AppCurrency;
   onClose: () => void;
   onAdd: (loan: Omit<Loan, 'id' | 'createdAt'>) => void;
 }
 
-export default function AddLoanModal({ borrowers, onClose, onAdd }: AddLoanModalProps) {
+export default function AddLoanModal({ borrowers, currency, onClose, onAdd }: AddLoanModalProps) {
   const [formData, setFormData] = useState({
     borrowerId: '',
     amount: '',
@@ -216,15 +217,15 @@ export default function AddLoanModal({ borrowers, onClose, onAdd }: AddLoanModal
               <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
                 <div>
                   <p className="text-indigo-600">Monthly EMI</p>
-                  <p className="font-bold text-indigo-900">${emi.toFixed(2)}</p>
+                  <p className="font-bold text-indigo-900">{formatCurrency(emi, currency)}</p>
                 </div>
                 <div>
                   <p className="text-indigo-600">Total Payable</p>
-                  <p className="font-bold text-indigo-900">${totalPayable.toFixed(2)}</p>
+                  <p className="font-bold text-indigo-900">{formatCurrency(totalPayable, currency)}</p>
                 </div>
                 <div>
                   <p className="text-indigo-600">Total Interest</p>
-                  <p className="font-bold text-indigo-900">${(totalPayable - amount).toFixed(2)}</p>
+                  <p className="font-bold text-indigo-900">{formatCurrency(totalPayable - amount, currency)}</p>
                 </div>
                 <div>
                   <p className="text-indigo-600">Due Date</p>
