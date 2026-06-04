@@ -1,4 +1,4 @@
-import { Settings, Bell, Shield, Database, Globe, LogOut } from "lucide-react";
+import { Settings, Bell, Shield, Database, LogOut } from "lucide-react";
 import { useState } from "react";
 import { User } from "@supabase/supabase-js";
 
@@ -185,8 +185,12 @@ export default function SettingsPage({
           </h3>
           <div className="p-4 bg-gray-50 rounded-xl">
             <div className="flex items-center gap-4 mb-4">
-              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500">
-                <Globe className="w-6 h-6 text-white" />
+              <div className="flex items-center justify-center w-12 h-12 p-1 bg-white rounded-xl shadow-sm ring-1 ring-slate-200">
+                <img
+                  src="/images/logo.png"
+                  alt="LendSmart logo"
+                  className="object-contain w-full h-full"
+                />
               </div>
               <div>
                 <p className="font-bold text-gray-800">LendSmart</p>

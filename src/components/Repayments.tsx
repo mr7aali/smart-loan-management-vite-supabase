@@ -27,6 +27,13 @@ interface RepaymentsProps {
   onAdd: () => void;
 }
 
+const compactCurrencyFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
+
 const methodMeta = {
   cash: { label: 'Cash', icon: Banknote },
   bank_transfer: { label: 'Bank Transfer', icon: Landmark },
@@ -67,42 +74,45 @@ export default function Repayments({ repayments, loans, borrowers, onAdd }: Repa
       return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
     })
     .reduce((sum, repayment) => sum + repayment.amount, 0);
+  const compactCurrency = (value: number) => compactCurrencyFormatter.format(value);
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-3">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center">
-              <DollarSign className="w-6 h-6 text-emerald-600" />
+      <div className="grid grid-cols-3 gap-2 sm:gap-6 md:grid-cols-3">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-2.5 sm:rounded-xl sm:p-6">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <div className="h-8 w-8 rounded-lg bg-emerald-100 flex items-center justify-center sm:h-12 sm:w-12 sm:rounded-xl">
+              <DollarSign className="h-4 w-4 text-emerald-600 sm:h-6 sm:w-6" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Total Collected</p>
-              <p className="text-2xl font-bold text-gray-800">{formatCurrency(totalCollected)}</p>
+              <p className="text-[10px] uppercase tracking-[0.12em] text-gray-500 sm:text-sm sm:normal-case sm:tracking-normal">Collected</p>
+              <p className="text-sm font-bold text-gray-800 sm:hidden">{compactCurrency(totalCollected)}</p>
+              <p className="hidden text-2xl font-bold text-gray-800 sm:block">{formatCurrency(totalCollected)}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center">
-              <Calendar className="w-6 h-6 text-indigo-600" />
+        <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-2.5 sm:rounded-xl sm:p-6">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <div className="h-8 w-8 rounded-lg bg-indigo-100 flex items-center justify-center sm:h-12 sm:w-12 sm:rounded-xl">
+              <Calendar className="h-4 w-4 text-indigo-600 sm:h-6 sm:w-6" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">This Month</p>
-              <p className="text-2xl font-bold text-gray-800">{formatCurrency(thisMonth)}</p>
+              <p className="text-[10px] uppercase tracking-[0.12em] text-gray-500 sm:text-sm sm:normal-case sm:tracking-normal">Month</p>
+              <p className="text-sm font-bold text-gray-800 sm:hidden">{compactCurrency(thisMonth)}</p>
+              <p className="hidden text-2xl font-bold text-gray-800 sm:block">{formatCurrency(thisMonth)}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center">
-              <ArrowUpRight className="w-6 h-6 text-purple-600" />
+        <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-2.5 sm:rounded-xl sm:p-6">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <div className="h-8 w-8 rounded-lg bg-purple-100 flex items-center justify-center sm:h-12 sm:w-12 sm:rounded-xl">
+              <ArrowUpRight className="h-4 w-4 text-purple-600 sm:h-6 sm:w-6" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Transactions</p>
-              <p className="text-2xl font-bold text-gray-800">{filteredRepayments.length}</p>
+              <p className="text-[10px] uppercase tracking-[0.12em] text-gray-500 sm:text-sm sm:normal-case sm:tracking-normal">Txns</p>
+              <p className="text-sm font-bold text-gray-800 sm:text-2xl">{filteredRepayments.length}</p>
             </div>
           </div>
         </div>

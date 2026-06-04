@@ -30,6 +30,12 @@ const moneyFormatter = new Intl.NumberFormat("en-US", {
   currency: "USD",
   maximumFractionDigits: 0,
 });
+const compactMoneyFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
@@ -238,27 +244,27 @@ function PlanDistribution({ items }: { items: AdminPlanDistributionItem[] }) {
   const total = items.reduce((sum, item) => sum + item.users, 0) || 1;
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-2 sm:gap-3 xl:grid-cols-4">
       {items.map((item) => {
         const percentage = Math.round((item.users / total) * 100);
         return (
           <div
             key={item.plan}
-            className="rounded-2xl border border-slate-200 bg-white px-4 py-3"
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 sm:rounded-2xl sm:px-4 sm:py-3"
           >
             <div className="flex items-center justify-between gap-3">
               <span
-                className={`rounded-full px-2.5 py-1 text-xs font-medium capitalize ${getPlanTone(item.plan)}`}
+                className={`rounded-full px-2 py-1 text-[10px] font-medium uppercase tracking-[0.12em] sm:px-2.5 sm:text-xs sm:capitalize sm:tracking-normal ${getPlanTone(item.plan)}`}
               >
                 {item.plan}
               </span>
-              <span className="text-xs font-medium text-slate-400">
+              <span className="text-[10px] font-medium text-slate-400 sm:text-xs">
                 {percentage}%
               </span>
             </div>
-            <div className="mt-3">
-              <p className="text-2xl font-semibold text-slate-900">{item.users}</p>
-              <p className="text-sm text-slate-500">
+            <div className="mt-2 sm:mt-3">
+              <p className="text-lg font-semibold text-slate-900 sm:text-2xl">{item.users}</p>
+              <p className="text-xs text-slate-500 sm:text-sm">
                 {item.users === 1 ? "user" : "users"}
               </p>
             </div>
@@ -341,24 +347,28 @@ export default function AdminOverview({
   const tabs: Array<{
     id: OverviewTab;
     label: string;
+    mobileLabel: string;
     description: string;
     count: number;
   }> = [
     {
       id: "payments",
       label: "Recent payments",
+      mobileLabel: "Payments",
       description: "Latest captured subscription payments",
       count: data?.recentPayments.length ?? 0,
     },
     {
       id: "users",
       label: "Newest users",
+      mobileLabel: "Users",
       description: "Recently created platform accounts",
       count: data?.newestUsers.length ?? 0,
     },
     {
       id: "subscriptions",
       label: "Expiring subscriptions",
+      mobileLabel: "Expiring",
       description: "Accounts needing renewal attention",
       count: data?.expiringSubscriptions.length ?? 0,
     },
@@ -422,25 +432,31 @@ export default function AdminOverview({
 
   return (
     <div className="space-y-6">
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <section className="grid grid-cols-3 gap-2 md:grid-cols-2 md:gap-4 xl:grid-cols-3">
         {[
           {
             label: "Total users",
+            mobileLabel: "Users",
             value: stats?.totalUsers ?? 0,
+            mobileValue: stats?.totalUsers ?? 0,
             hint: `${stats?.adminUsers ?? 0} admin accounts`,
             icon: Users,
             tone: "from-sky-500 to-cyan-400",
           },
           {
             label: "Active subscriptions",
+            mobileLabel: "Subs",
             value: stats?.activeSubscriptions ?? 0,
+            mobileValue: stats?.activeSubscriptions ?? 0,
             hint: `${stats?.expiringSoon ?? 0} expiring soon`,
             icon: Activity,
             tone: "from-emerald-500 to-lime-400",
           },
           {
             label: "30-day revenue",
+            mobileLabel: "Revenue",
             value: moneyFormatter.format(stats?.monthlyRevenue ?? 0),
+            mobileValue: compactMoneyFormatter.format(stats?.monthlyRevenue ?? 0),
             hint: `${stats?.completedPayments ?? 0} completed payments`,
             icon: BadgeDollarSign,
             tone: "from-amber-500 to-orange-400",
@@ -450,20 +466,24 @@ export default function AdminOverview({
           return (
             <div
               key={card.label}
-              className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm"
+              className="rounded-[18px] border border-slate-200 bg-white p-2.5 shadow-sm sm:rounded-[24px] sm:p-5"
             >
-              <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start justify-between gap-2 sm:gap-4">
                 <div>
-                  <p className="text-sm text-slate-500">{card.label}</p>
-                  <p className="mt-2 text-3xl font-bold text-slate-900">
-                    {card.value}
+                  <p className="text-[10px] uppercase tracking-[0.12em] text-slate-500 sm:text-sm sm:normal-case sm:tracking-normal">
+                    <span className="sm:hidden">{card.mobileLabel}</span>
+                    <span className="hidden sm:inline">{card.label}</span>
                   </p>
-                  <p className="mt-2 text-sm text-slate-500">{card.hint}</p>
+                  <p className="mt-1 text-sm font-bold text-slate-900 sm:mt-2 sm:text-3xl">
+                    <span className="sm:hidden">{card.mobileValue}</span>
+                    <span className="hidden sm:inline">{card.value}</span>
+                  </p>
+                  <p className="mt-2 hidden text-sm text-slate-500 sm:block">{card.hint}</p>
                 </div>
                 <div
-                  className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${card.tone} text-white shadow-lg`}
+                  className={`flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br ${card.tone} text-white shadow-lg sm:h-12 sm:w-12 sm:rounded-2xl`}
                 >
-                  <Icon className="w-6 h-6" />
+                  <Icon className="h-4 w-4 sm:h-6 sm:w-6" />
                 </div>
               </div>
             </div>
@@ -495,29 +515,30 @@ export default function AdminOverview({
           </button>
         </div>
 
-        <div className="grid gap-3 mb-6 md:grid-cols-3">
+        <div className="mb-6 grid grid-cols-3 gap-2 sm:gap-3 md:grid-cols-3">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
-              className={`rounded-[24px] border p-4 text-left transition ${
+              className={`rounded-2xl border px-2 py-3 text-left transition sm:rounded-[24px] sm:px-3 sm:py-3 md:p-4 ${
                 activeTab === tab.id
                   ? "border-slate-900 bg-slate-900 text-white shadow-sm"
                   : "border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-white"
               }`}
             >
-              <div className="flex items-start justify-between gap-3">
+              <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <p
-                    className={`text-sm font-semibold ${
+                    className={`text-xs font-semibold sm:text-sm ${
                       activeTab === tab.id ? "text-white" : "text-slate-900"
                     }`}
                   >
-                    {tab.label}
+                    <span className="sm:hidden">{tab.mobileLabel}</span>
+                    <span className="hidden sm:inline">{tab.label}</span>
                   </p>
                   <p
-                    className={`mt-1 text-sm ${
+                    className={`mt-1 hidden text-sm sm:block ${
                       activeTab === tab.id ? "text-slate-300" : "text-slate-500"
                     }`}
                   >
@@ -525,7 +546,7 @@ export default function AdminOverview({
                   </p>
                 </div>
                 <span
-                  className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                  className={`rounded-full px-2 py-1 text-[10px] font-medium sm:px-2.5 sm:text-xs ${
                     activeTab === tab.id
                       ? "bg-white/15 text-white"
                       : "bg-white text-slate-700"
