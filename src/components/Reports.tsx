@@ -8,6 +8,7 @@ import {
   getLoanInterestRate,
   getRepaymentLoanId,
 } from '../utils';
+import { downloadCsv } from '../lib/export';
 import { BarChart3, DollarSign, Users, Download } from 'lucide-react';
 import { useState } from 'react';
 
@@ -16,32 +17,6 @@ interface ReportsProps {
   loans: Loan[];
   repayments: Repayment[];
 }
-
-const escapeCsv = (value: string | number) => {
-  const text = String(value ?? '');
-  if (/[",\n]/.test(text)) {
-    return `"${text.replace(/"/g, '""')}"`;
-  }
-  return text;
-};
-
-const downloadCsv = (filename: string, rows: Array<Record<string, string | number>>) => {
-  if (rows.length === 0) return;
-
-  const headers = Object.keys(rows[0]);
-  const csv = [
-    headers.join(','),
-    ...rows.map((row) => headers.map((header) => escapeCsv(row[header] ?? '')).join(',')),
-  ].join('\n');
-
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
-};
 
 export default function Reports({ borrowers, loans, repayments }: ReportsProps) {
   const [selectedReport, setSelectedReport] = useState('portfolio');

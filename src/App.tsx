@@ -153,7 +153,9 @@ function App() {
   const [adminUsersLoading, setAdminUsersLoading] = useState(false);
   const activeSection = getSectionFromPathname(location.pathname);
   const isAdmin = profile?.role === "admin";
-  const activeCurrency = normalizeCurrency(profile?.currency || DEFAULT_CURRENCY);
+  const activeCurrency = normalizeCurrency(
+    profile?.currency || DEFAULT_CURRENCY,
+  );
   const hasOverlayOpen =
     sidebarOpen ||
     showAddBorrower ||
@@ -737,8 +739,8 @@ function App() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-indigo-600"></div>
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="w-12 h-12 border-b-2 border-indigo-600 rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -746,14 +748,8 @@ function App() {
   if (!user) {
     return (
       <Routes>
-        <Route
-          path="/terms"
-          element={<TermsOfServicePage />}
-        />
-        <Route
-          path="/privacy"
-          element={<PrivacyPolicyPage />}
-        />
+        <Route path="/terms" element={<TermsOfServicePage />} />
+        <Route path="/privacy" element={<PrivacyPolicyPage />} />
         <Route
           path="*"
           element={<AuthPage onSignIn={handleSignIn} onSignUp={handleSignUp} />}
@@ -773,7 +769,7 @@ function App() {
         onSignOut={handleSignOut}
         isAdmin={isAdmin}
       />
-      <div className="flex min-h-screen min-w-0 flex-1 flex-col md:h-screen">
+      <div className="flex flex-col flex-1 min-w-0 min-h-screen md:h-screen">
         <Header
           title={activeSection}
           onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
@@ -786,7 +782,7 @@ function App() {
           onOpenSettings={() => handleSectionChange("settings")}
           onSignOut={handleSignOut}
         />
-        <main className="min-h-0 flex-1 overflow-auto p-3 sm:p-6">
+        <main className="flex-1 min-h-0 p-3 overflow-auto sm:p-6">
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route
@@ -876,6 +872,9 @@ function App() {
                 <Settings
                   user={user}
                   profile={profile}
+                  borrowers={borrowers}
+                  loans={loans}
+                  repayments={repayments}
                   onSignOut={handleSignOut}
                   onUpdateCurrency={handleCurrencyChange}
                   subscription={subscription}

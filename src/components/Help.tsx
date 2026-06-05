@@ -47,6 +47,7 @@ function FAQItem({ question, answer, isOpen, onClick }: FAQItemProps) {
 
 export default function Help() {
   const [openFAQ, setOpenFAQ] = useState<number | null>(0);
+  const whatsappChatLink = import.meta.env.VITE_WHATSAPP_CHAT_LINK?.trim();
 
   const faqs = [
     {
@@ -318,6 +319,18 @@ export default function Help() {
         LendSmart v1.0.0 | Build {new Date().toLocaleDateString()} |
         <a href="#faq" className="text-indigo-600 hover:underline ml-1">Jump to FAQ</a>
       </div>
+
+      {whatsappChatLink && (
+        <a
+          href={whatsappChatLink}
+          target="_blank"
+          rel="noreferrer"
+          aria-label="Chat on WhatsApp"
+          className="fixed bottom-5 right-5 z-40 inline-flex h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-[0_16px_40px_rgba(37,211,102,0.35)] transition-transform hover:scale-105 hover:bg-[#20bd5a] focus:outline-none focus:ring-4 focus:ring-[#25D366]/30 sm:bottom-6 sm:right-6"
+        >
+          <MessageCircle className="h-7 w-7" />
+        </a>
+      )}
     </div>
   );
 }
