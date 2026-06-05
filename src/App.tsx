@@ -27,6 +27,8 @@ import EmailVerificationNotice from "./components/EmailVerificationNotice";
 import PayPalCheckoutPage from "./components/PayPalCheckoutPage";
 import AdminOverview from "./components/AdminOverview";
 import AdminUsersPage from "./components/AdminUsersPage";
+import TermsOfServicePage from "./components/TermsOfServicePage";
+import PrivacyPolicyPage from "./components/PrivacyPolicyPage";
 import { useIsMobile } from "./hooks/use-mobile";
 import {
   AdminManagedUser,
@@ -742,7 +744,22 @@ function App() {
   }
 
   if (!user) {
-    return <AuthPage onSignIn={handleSignIn} onSignUp={handleSignUp} />;
+    return (
+      <Routes>
+        <Route
+          path="/terms"
+          element={<TermsOfServicePage />}
+        />
+        <Route
+          path="/privacy"
+          element={<PrivacyPolicyPage />}
+        />
+        <Route
+          path="*"
+          element={<AuthPage onSignIn={handleSignIn} onSignUp={handleSignUp} />}
+        />
+      </Routes>
+    );
   }
 
   return (
@@ -851,6 +868,8 @@ function App() {
               }
             />
             <Route path="/help" element={<Help />} />
+            <Route path="/terms" element={<TermsOfServicePage />} />
+            <Route path="/privacy" element={<PrivacyPolicyPage />} />
             <Route
               path="/settings"
               element={
