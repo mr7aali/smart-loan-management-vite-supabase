@@ -251,7 +251,7 @@ export default function Header({
   }, []);
 
   return (
-    <header className="border-b border-gray-200 bg-white px-4 py-3 shadow-sm sm:px-6 sm:py-4">
+    <header className="sticky top-0 z-30 shrink-0 border-b border-gray-200 bg-white px-4 py-3 shadow-sm sm:px-6 sm:py-4">
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2 sm:gap-4">
           <button
@@ -423,7 +423,7 @@ export default function Header({
             </button>
 
             {isNotificationsOpen && (
-              <div className="absolute right-0 z-20 mt-3 w-[min(24rem,calc(100vw-1.5rem))] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl">
+              <div className="fixed left-3 right-3 top-16 z-20 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-3 sm:w-[24rem]">
                 <div className="border-b border-gray-100 px-4 py-3">
                   <p className="text-sm font-semibold text-gray-800">
                     Notifications
@@ -438,7 +438,7 @@ export default function Header({
                     You're all caught up. No urgent alerts right now.
                   </div>
                 ) : (
-                  <div className="max-h-[28rem] overflow-y-auto p-2">
+                  <div className="max-h-[min(70vh,28rem)] overflow-y-auto p-2">
                     {notifications.map((notification) => (
                       <button
                         key={notification.id}

@@ -47,6 +47,7 @@ function FAQItem({ question, answer, isOpen, onClick }: FAQItemProps) {
 
 export default function Help() {
   const [openFAQ, setOpenFAQ] = useState<number | null>(0);
+  const whatsappChatLink = import.meta.env.VITE_WHATSAPP_CHAT_LINK?.trim();
 
   const faqs = [
     {
@@ -114,20 +115,20 @@ export default function Help() {
     {
       icon: Mail,
       title: 'Email Support',
-      description: 'support@lendsmart.app',
-      link: 'mailto:support@lendsmart.app',
+      description: 'contactus@lendsmart.me',
+      link: 'mailto:contactus@lendsmart.me',
     },
     {
       icon: MessageCircle,
       title: 'Live Chat',
       description: 'Available on Professional and Enterprise plans',
-      link: 'mailto:support@lendsmart.app?subject=Live%20Chat%20Request',
+      link: 'mailto:contactus@lendsmart.me?subject=Live%20Chat%20Request',
     },
     {
       icon: Video,
       title: 'Video Tutorials',
       description: 'Request a walkthrough from support',
-      link: 'mailto:support@lendsmart.app?subject=Video%20Tutorial%20Request',
+      link: 'mailto:contactus@lendsmart.me?subject=Video%20Tutorial%20Request',
     },
   ];
 
@@ -165,6 +166,58 @@ export default function Help() {
           Welcome to LendSmart Help Center. Find answers to common questions,
           browse our guides, or contact our support team.
         </p>
+      </div>
+
+      <div className="overflow-hidden rounded-2xl border border-indigo-100 bg-white shadow-sm">
+        <div className="grid grid-cols-1 gap-0 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="p-5 sm:p-6 lg:p-8">
+            <div className="inline-flex items-center gap-2 rounded-full bg-indigo-50 px-3 py-1 text-sm font-medium text-indigo-700">
+              <Video className="h-4 w-4" />
+              Video walkthrough
+            </div>
+            <h2 className="mt-4 text-2xl font-bold text-gray-900 sm:text-3xl">
+              Watch how LendSmart works
+            </h2>
+            <p className="mt-3 max-w-xl text-sm leading-relaxed text-gray-600 sm:text-base">
+              If you want a faster overview, this short video walks through the
+              main workflow for managing borrowers, loans, repayments, and
+              reports inside the app.
+            </p>
+            <div className="mt-5 flex flex-wrap gap-3">
+              <a
+                href="#faq"
+                className="rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
+              >
+                Read the FAQ
+              </a>
+              <a
+                href="https://youtu.be/w8v5jvjAx7k"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 rounded-full border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 transition hover:border-indigo-200 hover:text-indigo-700"
+              >
+                Open on YouTube
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            </div>
+          </div>
+
+          <div className="bg-slate-950 p-3 sm:p-4 lg:p-5">
+            <div className="overflow-hidden rounded-2xl border border-white/10 bg-black shadow-2xl">
+              <div className="aspect-video">
+                <iframe
+                  className="h-full w-full"
+                  src="https://www.youtube.com/embed/w8v5jvjAx7k?rel=0"
+                  title="LendSmart help video walkthrough"
+                  loading="lazy"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  referrerPolicy="strict-origin-when-cross-origin"
+                  allowFullScreen
+                />
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2 xl:grid-cols-4">
@@ -266,6 +319,18 @@ export default function Help() {
         LendSmart v1.0.0 | Build {new Date().toLocaleDateString()} |
         <a href="#faq" className="text-indigo-600 hover:underline ml-1">Jump to FAQ</a>
       </div>
+
+      {whatsappChatLink && (
+        <a
+          href={whatsappChatLink}
+          target="_blank"
+          rel="noreferrer"
+          aria-label="Chat on WhatsApp"
+          className="fixed bottom-5 right-5 z-40 inline-flex h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-[0_16px_40px_rgba(37,211,102,0.35)] transition-transform hover:scale-105 hover:bg-[#20bd5a] focus:outline-none focus:ring-4 focus:ring-[#25D366]/30 sm:bottom-6 sm:right-6"
+        >
+          <MessageCircle className="h-7 w-7" />
+        </a>
+      )}
     </div>
   );
 }

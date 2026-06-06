@@ -2,7 +2,8 @@ import { Settings, Bell, Shield, Database, LogOut } from "lucide-react";
 import { useEffect, useState } from "react";
 import { User } from "@supabase/supabase-js";
 import { AppCurrency, normalizeCurrency, SUPPORTED_CURRENCIES } from "../utils";
-import { UserProfile } from "../types";
+import { Borrower, Loan, Repayment, UserProfile } from "../types";
+import { exportWorkspaceData } from "../lib/export";
 
 interface SettingsProps {
   user?: User | null;
@@ -10,6 +11,9 @@ interface SettingsProps {
   onUpdateCurrency: (currency: AppCurrency) => Promise<void>;
   profile?: UserProfile | null;
   subscription?: any;
+  borrowers: Borrower[];
+  loans: Loan[];
+  repayments: Repayment[];
 }
 
 export default function SettingsPage({
@@ -18,6 +22,9 @@ export default function SettingsPage({
   onUpdateCurrency,
   profile,
   subscription,
+  borrowers,
+  loans,
+  repayments,
 }: SettingsProps) {
   const [notifications, setNotifications] = useState(true);
   const [autoReminders, setAutoReminders] = useState(true);
@@ -26,6 +33,7 @@ export default function SettingsPage({
     normalizeCurrency(profile?.currency),
   );
   const [currencySaving, setCurrencySaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     setSelectedCurrency(normalizeCurrency(profile?.currency));
@@ -37,6 +45,15 @@ export default function SettingsPage({
       await onUpdateCurrency(selectedCurrency);
     } finally {
       setCurrencySaving(false);
+    }
+  };
+
+  const handleExportData = async () => {
+    setExporting(true);
+    try {
+      exportWorkspaceData(borrowers, loans, repayments);
+    } finally {
+      setTimeout(() => setExporting(false), 400);
     }
   };
 
@@ -218,8 +235,13 @@ export default function SettingsPage({
                   Download all your data in CSV format
                 </p>
               </div>
-              <button className="w-full px-4 py-2 text-white transition-colors bg-indigo-600 rounded-lg hover:bg-indigo-700 sm:w-auto">
-                Export
+              <button
+                type="button"
+                onClick={() => void handleExportData()}
+                disabled={exporting}
+                className="w-full rounded-lg bg-indigo-600 px-4 py-2 text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+              >
+                {exporting ? "Exporting..." : "Export"}
               </button>
             </div>
           </div>

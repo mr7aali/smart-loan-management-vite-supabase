@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Lock, Mail, User, ArrowRight } from "lucide-react";
+import { Link } from "react-router-dom";
 
 interface AuthPageProps {
   onSignIn: (email: string, password: string) => Promise<any>;
@@ -212,8 +213,15 @@ export default function AuthPage({ onSignIn, onSignUp }: AuthPageProps) {
           </div>
         </div>
 
-        <p className="mt-6 text-sm text-center text-indigo-300">
-          By continuing, you agree to our Terms & Privacy Policy
+        <p className="mt-6 text-center text-sm text-indigo-300">
+          By continuing, you agree to our{" "}
+          <Link to="/terms" className="font-medium text-white underline underline-offset-4 hover:text-indigo-100">
+            Terms
+          </Link>{" "}
+          &{" "}
+          <Link to="/privacy" className="font-medium text-white underline underline-offset-4 hover:text-indigo-100">
+            Privacy Policy
+          </Link>
         </p>
       </div>
     </div>
