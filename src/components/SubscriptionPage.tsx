@@ -2,7 +2,8 @@ import { Check, Sparkles, Crown, Building2, Zap } from 'lucide-react';
 import { SUBSCRIPTION_PLANS, SubscriptionPlanId } from '../lib/subscription-plans';
 
 interface SubscriptionPageProps {
-  currentPlan: string;
+  currentPlan: SubscriptionPlanId;
+  changingPlan?: SubscriptionPlanId | null;
   onUpgrade: (plan: SubscriptionPlanId) => void;
 }
 
@@ -13,7 +14,11 @@ const planIcons = {
   enterprise: Building2,
 };
 
-export default function SubscriptionPage({ currentPlan, onUpgrade }: SubscriptionPageProps) {
+export default function SubscriptionPage({
+  currentPlan,
+  changingPlan,
+  onUpgrade,
+}: SubscriptionPageProps) {
   return (
     <div className="space-y-6">
       <div className="text-center">
@@ -25,10 +30,12 @@ export default function SubscriptionPage({ currentPlan, onUpgrade }: Subscriptio
         {SUBSCRIPTION_PLANS.map((plan) => {
           const Icon = planIcons[plan.id];
           const isCurrentPlan = currentPlan === plan.id;
+          const currentPlanDetails = SUBSCRIPTION_PLANS.find(
+            (subscriptionPlan) => subscriptionPlan.id === currentPlan,
+          );
           const isUpgrade =
-            (currentPlan === 'free' && plan.id !== 'free') ||
-            (currentPlan === 'starter' && ['professional', 'enterprise'].includes(plan.id)) ||
-            (currentPlan === 'professional' && plan.id === 'enterprise');
+            !currentPlanDetails || plan.price > currentPlanDetails.price;
+          const isChanging = changingPlan === plan.id;
 
           return (
             <div
@@ -68,16 +75,24 @@ export default function SubscriptionPage({ currentPlan, onUpgrade }: Subscriptio
 
                 <button
                   onClick={() => onUpgrade(plan.id)}
-                  disabled={isCurrentPlan}
+                  disabled={isCurrentPlan || Boolean(changingPlan)}
                   className={`mt-5 w-full rounded-xl py-3 font-semibold transition-all sm:mt-6 ${
                     isCurrentPlan
                       ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : changingPlan
+                      ? 'bg-gray-100 text-gray-400 cursor-wait'
                       : isUpgrade
                       ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
-                  {isCurrentPlan ? 'Current Plan' : isUpgrade ? `Upgrade to ${plan.name}` : 'Downgrade'}
+                  {isChanging
+                    ? 'Updating...'
+                    : isCurrentPlan
+                    ? 'Current Plan'
+                    : isUpgrade
+                    ? `Upgrade to ${plan.name}`
+                    : 'Downgrade'}
                 </button>
               </div>
             </div>
