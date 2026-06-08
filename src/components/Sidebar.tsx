@@ -88,7 +88,7 @@ export default function Sidebar({
         <div className="flex items-center justify-between p-4 border-b border-indigo-800">
           {showLabels && (
             <div className="flex items-center gap-2">
-              <div className="flex items-center justify-center w-10 h-10 p-1 bg-white rounded-lg shadow-sm">
+              <div className="theme-logo-surface flex items-center justify-center w-10 h-10 p-1 bg-white rounded-lg shadow-sm">
                 <img
                   src="/images/logo.png"
                   alt="LendSmart logo"

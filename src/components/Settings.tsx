@@ -9,6 +9,8 @@ interface SettingsProps {
   user?: User | null;
   onSignOut: () => void;
   onUpdateCurrency: (currency: AppCurrency) => Promise<void>;
+  darkMode: boolean;
+  onToggleDarkMode: () => void;
   profile?: UserProfile | null;
   subscription?: any;
   borrowers: Borrower[];
@@ -20,6 +22,8 @@ export default function SettingsPage({
   user,
   onSignOut,
   onUpdateCurrency,
+  darkMode,
+  onToggleDarkMode,
   profile,
   subscription,
   borrowers,
@@ -28,7 +32,6 @@ export default function SettingsPage({
 }: SettingsProps) {
   const [notifications, setNotifications] = useState(true);
   const [autoReminders, setAutoReminders] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
   const [selectedCurrency, setSelectedCurrency] = useState<AppCurrency>(
     normalizeCurrency(profile?.currency),
   );
@@ -117,8 +120,9 @@ export default function SettingsPage({
                 </p>
               </div>
               <button
-                onClick={() => setDarkMode(!darkMode)}
+                onClick={onToggleDarkMode}
                 aria-label="Toggle dark mode"
+                aria-pressed={darkMode}
                 className={`w-12 h-6 rounded-full transition-colors ${
                   darkMode ? "bg-indigo-600" : "bg-gray-300"
                 }`}
@@ -266,7 +270,7 @@ export default function SettingsPage({
           </h3>
           <div className="p-4 bg-gray-50 rounded-xl">
             <div className="flex items-center gap-4 mb-4">
-              <div className="flex items-center justify-center w-12 h-12 p-1 bg-white rounded-xl shadow-sm ring-1 ring-slate-200">
+              <div className="theme-logo-surface flex items-center justify-center w-12 h-12 p-1 bg-white rounded-xl shadow-sm ring-1 ring-slate-200">
                 <img
                   src="/images/logo.png"
                   alt="LendSmart logo"
