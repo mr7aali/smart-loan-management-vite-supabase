@@ -41,6 +41,7 @@ import {
 } from "./types";
 import {
   isPaidSubscriptionPlanId,
+  SUBSCRIPTION_PLANS_BY_ID,
   SubscriptionPlanId,
   PaidSubscriptionPlanId,
 } from "./lib/subscription-plans";
@@ -142,6 +143,8 @@ function App() {
   const [showAddRepayment, setShowAddRepayment] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [changingSubscriptionPlan, setChangingSubscriptionPlan] =
+    useState<SubscriptionPlanId | null>(null);
   const [showEmailVerification, setShowEmailVerification] = useState(false);
   const [canResendEmail, setCanResendEmail] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
@@ -153,6 +156,8 @@ function App() {
   const [adminUsersLoading, setAdminUsersLoading] = useState(false);
   const activeSection = getSectionFromPathname(location.pathname);
   const isAdmin = profile?.role === "admin";
+  const activePlan: SubscriptionPlanId =
+    subscription?.plan || profile?.plan || "free";
   const activeCurrency = normalizeCurrency(
     profile?.currency || DEFAULT_CURRENCY,
   );
@@ -220,6 +225,32 @@ function App() {
       : null;
     setProfile(normalizedProfile);
     return normalizedProfile;
+  };
+
+  const getPlanLimitViolation = (
+    planId: SubscriptionPlanId,
+    nextBorrowerCount: number,
+    nextLoanCount: number,
+  ) => {
+    const plan = SUBSCRIPTION_PLANS_BY_ID[planId];
+
+    if (
+      plan.maxBorrowers !== null &&
+      nextBorrowerCount > plan.maxBorrowers
+    ) {
+      return `The ${plan.name} plan allows up to ${plan.maxBorrowers} borrowers.`;
+    }
+
+    if (plan.maxLoans !== null && nextLoanCount > plan.maxLoans) {
+      return `The ${plan.name} plan allows up to ${plan.maxLoans} loans.`;
+    }
+
+    return null;
+  };
+
+  const showPlanLimitAlert = (message: string) => {
+    alert(`${message} Upgrade your subscription to continue.`);
+    navigate("/subscription");
   };
 
   const loadAdminOverview = async () => {
@@ -433,6 +464,17 @@ function App() {
 
   const handleAddBorrower = async (borrower: Omit<Borrower, "id">) => {
     if (!user) return;
+    const planLimitViolation = getPlanLimitViolation(
+      activePlan,
+      borrowers.length + 1,
+      loans.length,
+    );
+
+    if (planLimitViolation) {
+      showPlanLimitAlert(planLimitViolation);
+      return;
+    }
+
     try {
       const { data, error } = await db.addBorrower(user.id, {
         name: borrower.name,
@@ -454,6 +496,17 @@ function App() {
 
   const handleAddLoan = async (loan: Omit<Loan, "id">) => {
     if (!user) return;
+    const planLimitViolation = getPlanLimitViolation(
+      activePlan,
+      borrowers.length,
+      loans.length + 1,
+    );
+
+    if (planLimitViolation) {
+      showPlanLimitAlert(planLimitViolation);
+      return;
+    }
+
     try {
       const { data, error } = await db.addLoan(user.id, {
         borrower_id: loan.borrowerId,
@@ -574,12 +627,30 @@ function App() {
   const handleSubscriptionChange = async (plan: SubscriptionPlanId) => {
     if (!user) return;
 
-    if (plan === "free") {
+    if (plan === activePlan) {
+      return;
+    }
+
+    const planLimitViolation = getPlanLimitViolation(
+      plan,
+      borrowers.length,
+      loans.length,
+    );
+
+    if (planLimitViolation) {
+      alert(
+        `You cannot switch to the ${SUBSCRIPTION_PLANS_BY_ID[plan].name} plan yet. ${planLimitViolation}`,
+      );
+      return;
+    }
+
+    if (!isPaidSubscriptionPlanId(plan)) {
+      setChangingSubscriptionPlan(plan);
       try {
         const { data, error } = await supabase.functions.invoke(
           "subscription-manage",
           {
-            body: { plan: "free" },
+            body: { plan },
           },
         );
 
@@ -588,26 +659,95 @@ function App() {
         }
 
         setSubscription(data.subscription as Subscription);
+        await loadProfile(user.id);
         navigate("/subscription", { replace: true });
-        alert("You are now on the Free plan.");
+        alert(`You are now on the ${SUBSCRIPTION_PLANS_BY_ID[plan].name} plan.`);
       } catch (error) {
-        console.error("Error downgrading subscription:", error);
-        alert("Failed to switch to the Free plan.");
+        console.error("Error changing subscription:", error);
+        alert(
+          error instanceof Error
+            ? error.message
+            : `Failed to switch to the ${SUBSCRIPTION_PLANS_BY_ID[plan].name} plan.`,
+        );
+      } finally {
+        setChangingSubscriptionPlan(null);
       }
       return;
     }
 
-    if (!isPaidSubscriptionPlanId(plan)) {
-      alert("Unsupported subscription plan.");
+    const isUpgrade = SUBSCRIPTION_PLANS_BY_ID[plan].price >
+      SUBSCRIPTION_PLANS_BY_ID[activePlan].price;
+
+    if (isUpgrade) {
+      navigate(`/subscription/checkout/${plan}`);
       return;
     }
 
-    navigate(`/subscription/checkout/${plan}`);
+    setChangingSubscriptionPlan(plan);
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        "subscription-manage",
+        {
+          body: { plan },
+        },
+      );
+
+      if (error || !data?.subscription) {
+        throw error || new Error("Subscription update failed.");
+      }
+
+      setSubscription(data.subscription as Subscription);
+      await loadProfile(user.id);
+      navigate("/subscription", { replace: true });
+      alert(`You are now on the ${SUBSCRIPTION_PLANS_BY_ID[plan].name} plan.`);
+    } catch (error) {
+      console.error("Error changing subscription:", error);
+      alert(
+        error instanceof Error
+          ? error.message
+          : `Failed to switch to the ${SUBSCRIPTION_PLANS_BY_ID[plan].name} plan.`,
+      );
+    } finally {
+      setChangingSubscriptionPlan(null);
+    }
   };
 
   const handleCheckoutSuccess = (nextSubscription: Subscription) => {
     setSubscription(nextSubscription);
+    if (user?.id) {
+      void loadProfile(user.id);
+    }
     navigate("/subscription", { replace: true });
+  };
+
+  const handleOpenAddBorrower = () => {
+    const planLimitViolation = getPlanLimitViolation(
+      activePlan,
+      borrowers.length + 1,
+      loans.length,
+    );
+
+    if (planLimitViolation) {
+      showPlanLimitAlert(planLimitViolation);
+      return;
+    }
+
+    setShowAddBorrower(true);
+  };
+
+  const handleOpenAddLoan = () => {
+    const planLimitViolation = getPlanLimitViolation(
+      activePlan,
+      borrowers.length,
+      loans.length + 1,
+    );
+
+    if (planLimitViolation) {
+      showPlanLimitAlert(planLimitViolation);
+      return;
+    }
+
+    setShowAddLoan(true);
   };
 
   const handleCurrencyChange = async (currency: typeof activeCurrency) => {
@@ -803,7 +943,7 @@ function App() {
                   borrowers={borrowers}
                   loans={loans}
                   repayments={repayments}
-                  onAdd={() => setShowAddBorrower(true)}
+                  onAdd={handleOpenAddBorrower}
                   onDelete={handleDeleteBorrower}
                   onSelect={() => {}}
                 />
@@ -817,7 +957,7 @@ function App() {
                   borrowers={borrowers}
                   currency={activeCurrency}
                   repayments={repayments}
-                  onAdd={() => setShowAddLoan(true)}
+                  onAdd={handleOpenAddLoan}
                   onDelete={handleDeleteLoan}
                   onSelect={() => {}}
                 />
@@ -849,7 +989,8 @@ function App() {
               path="/subscription"
               element={
                 <SubscriptionPage
-                  currentPlan={subscription?.plan || "free"}
+                  currentPlan={activePlan}
+                  changingPlan={changingSubscriptionPlan}
                   onUpgrade={handleSubscriptionChange}
                 />
               }
