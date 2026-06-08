@@ -1,5 +1,7 @@
 import { Borrower, Loan, Repayment } from '../types';
 import {
+  AppCurrency,
+  DEFAULT_CURRENCY,
   formatCurrency,
   formatDate,
   getBorrowerById,
@@ -16,9 +18,15 @@ interface ReportsProps {
   borrowers: Borrower[];
   loans: Loan[];
   repayments: Repayment[];
+  currency?: AppCurrency;
 }
 
-export default function Reports({ borrowers, loans, repayments }: ReportsProps) {
+export default function Reports({
+  borrowers,
+  loans,
+  repayments,
+  currency = DEFAULT_CURRENCY,
+}: ReportsProps) {
   const [selectedReport, setSelectedReport] = useState('portfolio');
 
   const totalDisbursed = loans.reduce((sum, loan) => sum + loan.amount, 0);
@@ -175,15 +183,15 @@ export default function Reports({ borrowers, loans, repayments }: ReportsProps) 
             <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 sm:gap-6">
               <div className="p-4 bg-gray-50 rounded-xl">
                 <p className="text-sm text-gray-500 mb-1">Total Disbursed</p>
-                <p className="text-2xl font-bold text-gray-800">{formatCurrency(totalDisbursed)}</p>
+                <p className="text-2xl font-bold text-gray-800">{formatCurrency(totalDisbursed, currency)}</p>
               </div>
               <div className="p-4 bg-gray-50 rounded-xl">
                 <p className="text-sm text-gray-500 mb-1">Total Collected</p>
-                <p className="text-2xl font-bold text-emerald-600">{formatCurrency(totalCollected)}</p>
+                <p className="text-2xl font-bold text-emerald-600">{formatCurrency(totalCollected, currency)}</p>
               </div>
               <div className="p-4 bg-gray-50 rounded-xl">
                 <p className="text-sm text-gray-500 mb-1">Outstanding</p>
-                <p className="text-2xl font-bold text-amber-600">{formatCurrency(totalOutstanding)}</p>
+                <p className="text-2xl font-bold text-amber-600">{formatCurrency(totalOutstanding, currency)}</p>
               </div>
               <div className="p-4 bg-gray-50 rounded-xl">
                 <p className="text-sm text-gray-500 mb-1">Collection Rate</p>
@@ -212,7 +220,7 @@ export default function Reports({ borrowers, loans, repayments }: ReportsProps) 
                           ></div>
                         </div>
                       </div>
-                      <span className="font-medium text-gray-800 sm:text-right">{formatCurrency(item.amount)}</span>
+                      <span className="font-medium text-gray-800 sm:text-right">{formatCurrency(item.amount, currency)}</span>
                     </div>
                   ))}
                 </div>
@@ -245,7 +253,7 @@ export default function Reports({ borrowers, loans, repayments }: ReportsProps) 
               </div>
               <div className="p-6 bg-gray-50 rounded-xl">
                 <p className="text-sm text-gray-500 mb-1">Average Loan Amount</p>
-                <p className="text-2xl font-bold text-gray-800">{formatCurrency(avgLoanAmount)}</p>
+                <p className="text-2xl font-bold text-gray-800">{formatCurrency(avgLoanAmount, currency)}</p>
               </div>
               <div className="p-6 bg-gray-50 rounded-xl">
                 <p className="text-sm text-gray-500 mb-1">Total Borrowers</p>
@@ -284,17 +292,17 @@ export default function Reports({ borrowers, loans, repayments }: ReportsProps) 
                           <p className="truncate font-semibold text-gray-800">{borrower?.name || 'Unknown'}</p>
                           <p className="text-xs text-gray-500">Loan #{loan.id.slice(-6)}</p>
                         </div>
-                        <span className="text-sm font-semibold text-gray-800">{formatCurrency(loan.amount)}</span>
+                        <span className="text-sm font-semibold text-gray-800">{formatCurrency(loan.amount, currency)}</span>
                       </div>
 
                       <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
                         <div className="rounded-lg bg-white p-3">
                           <p className="text-xs uppercase tracking-wide text-gray-400">Paid</p>
-                          <p className="mt-1 font-medium text-emerald-600">{formatCurrency(totalPaid)}</p>
+                          <p className="mt-1 font-medium text-emerald-600">{formatCurrency(totalPaid, currency)}</p>
                         </div>
                         <div className="rounded-lg bg-white p-3">
                           <p className="text-xs uppercase tracking-wide text-gray-400">Remaining</p>
-                          <p className="mt-1 font-medium text-amber-600">{formatCurrency(remaining)}</p>
+                          <p className="mt-1 font-medium text-amber-600">{formatCurrency(remaining, currency)}</p>
                         </div>
                       </div>
 
@@ -333,9 +341,9 @@ export default function Reports({ borrowers, loans, repayments }: ReportsProps) 
                     return (
                       <tr key={loan.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 font-medium text-gray-800">{borrower?.name || 'Unknown'}</td>
-                        <td className="px-6 py-4 text-gray-600">{formatCurrency(loan.amount)}</td>
-                        <td className="px-6 py-4 text-emerald-600 font-medium">{formatCurrency(totalPaid)}</td>
-                        <td className="px-6 py-4 text-amber-600 font-medium">{formatCurrency(remaining)}</td>
+                        <td className="px-6 py-4 text-gray-600">{formatCurrency(loan.amount, currency)}</td>
+                        <td className="px-6 py-4 text-emerald-600 font-medium">{formatCurrency(totalPaid, currency)}</td>
+                        <td className="px-6 py-4 text-amber-600 font-medium">{formatCurrency(remaining, currency)}</td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
                             <div className="w-24 h-2 bg-gray-100 rounded-full overflow-hidden">
@@ -379,7 +387,7 @@ export default function Reports({ borrowers, loans, repayments }: ReportsProps) 
                     </div>
                   </div>
                   <div className="sm:text-right">
-                    <p className="font-semibold text-indigo-600">{formatCurrency(borrower.totalLoans)}</p>
+                    <p className="font-semibold text-indigo-600">{formatCurrency(borrower.totalLoans, currency)}</p>
                     <p className="text-sm text-gray-500">Total Borrowed</p>
                   </div>
                 </div>

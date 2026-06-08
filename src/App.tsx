@@ -960,6 +960,7 @@ function App() {
           borrowers={borrowers}
           loans={loans}
           repayments={repayments}
+          currency={activeCurrency}
           subscription={subscription}
           onNavigateSection={handleSectionChange}
           onOpenSettings={() => handleSectionChange("settings")}
@@ -986,6 +987,7 @@ function App() {
                   borrowers={borrowers}
                   loans={loans}
                   repayments={repayments}
+                  currency={activeCurrency}
                   onAdd={handleOpenAddBorrower}
                   onDelete={handleDeleteBorrower}
                   onSelect={() => {}}
@@ -1025,6 +1027,7 @@ function App() {
                   borrowers={borrowers}
                   loans={loans}
                   repayments={repayments}
+                  currency={activeCurrency}
                 />
               }
             />

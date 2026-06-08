@@ -10,6 +10,8 @@ import {
 import { User } from "@supabase/supabase-js";
 import { Borrower, Loan, Repayment, Subscription } from "../types";
 import {
+  AppCurrency,
+  DEFAULT_CURRENCY,
   formatCurrency,
   formatDate,
   getBorrowerById,
@@ -27,6 +29,7 @@ interface HeaderProps {
   borrowers?: Borrower[];
   loans?: Loan[];
   repayments?: Repayment[];
+  currency?: AppCurrency;
   subscription?: Subscription | null;
   onNavigateSection?: (section: string) => void;
   onOpenSettings?: () => void;
@@ -53,6 +56,7 @@ export default function Header({
   borrowers = [],
   loans = [],
   repayments = [],
+  currency = DEFAULT_CURRENCY,
   subscription,
   onNavigateSection,
   onOpenSettings,
@@ -176,6 +180,7 @@ export default function Header({
         title: `Upcoming payment from ${borrower?.name || "Unknown borrower"}`,
         body: `Loan due ${formatDate(getLoanDueDate(loan))} for ${formatCurrency(
           loan.amount,
+          currency,
         )}.`,
         actionLabel: "Open repayments",
         action: () => onNavigateSection?.("repayments"),
@@ -355,7 +360,7 @@ export default function Header({
                                     </p>
                                     <p className="text-sm text-gray-500">
                                       Loan #{loan.id.slice(-6)} -{" "}
-                                      {formatCurrency(loan.amount)}
+                                      {formatCurrency(loan.amount, currency)}
                                     </p>
                                   </div>
                                   <span className="text-xs text-indigo-600">
@@ -381,7 +386,7 @@ export default function Header({
                               >
                                 <div>
                                   <p className="font-medium text-gray-800">
-                                    {formatCurrency(repayment.amount)}
+                                    {formatCurrency(repayment.amount, currency)}
                                   </p>
                                   <p className="text-sm text-gray-500">
                                     {formatDate(repayment.date)} -{" "}

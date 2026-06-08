@@ -1,5 +1,6 @@
 import { Borrower, Loan, Repayment } from "../types";
 import {
+  AppCurrency,
   formatCurrency,
   formatDate,
   getLoansByBorrower,
@@ -21,6 +22,7 @@ interface BorrowersProps {
   borrowers: Borrower[];
   loans: Loan[];
   repayments: Repayment[];
+  currency: AppCurrency;
   onAdd: () => void;
   onDelete: (id: string) => void;
   onSelect: (borrower: Borrower) => void;
@@ -30,6 +32,7 @@ export default function Borrowers({
   borrowers,
   loans,
   repayments,
+  currency,
   onAdd,
   onDelete,
   onSelect,
@@ -184,7 +187,7 @@ export default function Borrowers({
                         Total Borrowed
                       </p>
                       <p className="font-semibold text-indigo-600">
-                        {formatCurrency(totalBorrowed)}
+                        {formatCurrency(totalBorrowed, currency)}
                       </p>
                     </div>
                   </div>
@@ -199,7 +202,7 @@ export default function Borrowers({
                         <div key={loan.id} className="space-y-1">
                           <div className="flex justify-between text-sm">
                             <span className="text-gray-600">
-                              {formatCurrency(loan.amount)}
+                              {formatCurrency(loan.amount, currency)}
                             </span>
                             <span className="font-medium text-indigo-600">
                               {getLoanProgress(loan, repayments).toFixed(0)}%
@@ -313,7 +316,7 @@ export default function Borrowers({
                           <div className="mb-2 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                             <div>
                               <p className="font-semibold text-gray-800">
-                                {formatCurrency(loan.amount)}
+                                {formatCurrency(loan.amount, currency)}
                               </p>
                               <p className="text-sm text-gray-500">
                                 {formatDate(loan.startDate)} -{" "}
