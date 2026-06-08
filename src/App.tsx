@@ -82,6 +82,34 @@ const SECTION_ROUTES: Record<AppSection, string> = {
   "admin-users": "/admin/users",
 };
 
+const THEME_STORAGE_KEY = "lendsmart-theme";
+
+function getInitialDarkMode() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  let savedTheme: string | null = null;
+
+  try {
+    savedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+  } catch {
+    savedTheme = null;
+  }
+
+  if (savedTheme === "dark") {
+    return true;
+  }
+
+  if (savedTheme === "light") {
+    return false;
+  }
+
+  return Boolean(
+    window.matchMedia?.("(prefers-color-scheme: dark)").matches,
+  );
+}
+
 function isAppSection(value: string | null): value is AppSection {
   return value !== null && APP_SECTIONS.includes(value as AppSection);
 }
@@ -146,6 +174,7 @@ function App() {
   const [changingSubscriptionPlan, setChangingSubscriptionPlan] =
     useState<SubscriptionPlanId | null>(null);
   const [showEmailVerification, setShowEmailVerification] = useState(false);
+  const [darkMode, setDarkMode] = useState(getInitialDarkMode);
   const [canResendEmail, setCanResendEmail] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [adminOverview, setAdminOverview] = useState<AdminOverviewData | null>(
@@ -167,6 +196,20 @@ function App() {
     showAddLoan ||
     showAddRepayment ||
     showEmailVerification;
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", darkMode);
+    document.documentElement.style.colorScheme = darkMode ? "dark" : "light";
+
+    try {
+      window.localStorage.setItem(
+        THEME_STORAGE_KEY,
+        darkMode ? "dark" : "light",
+      );
+    } catch {
+      // Theme still applies for the active session if persistence is blocked.
+    }
+  }, [darkMode]);
 
   useEffect(() => {
     if (resendCooldown > 0) {
@@ -1010,16 +1053,18 @@ function App() {
             <Route
               path="/settings"
               element={
-                <Settings
-                  user={user}
-                  profile={profile}
+        <Settings
+          user={user}
+          profile={profile}
                   borrowers={borrowers}
                   loans={loans}
                   repayments={repayments}
-                  onSignOut={handleSignOut}
-                  onUpdateCurrency={handleCurrencyChange}
-                  subscription={subscription}
-                />
+          onSignOut={handleSignOut}
+          onUpdateCurrency={handleCurrencyChange}
+          darkMode={darkMode}
+          onToggleDarkMode={() => setDarkMode((enabled) => !enabled)}
+          subscription={subscription}
+        />
               }
             />
             <Route

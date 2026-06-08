@@ -27,7 +27,7 @@ export default function LegalPageLayout({
       <header className="text-white bg-gradient-to-r from-indigo-700 via-violet-700 to-indigo-900">
         <div className="flex items-center justify-between w-full max-w-5xl gap-4 px-4 py-4 mx-auto sm:px-6">
           <Link to="/" className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-12 h-12 p-1 shadow-lg rounded-2xl bg-white/95">
+            <div className="theme-logo-surface flex items-center justify-center w-12 h-12 p-1 shadow-lg rounded-2xl bg-white/95">
               <img
                 src="/images/logo.png"
                 alt="LendSmart logo"

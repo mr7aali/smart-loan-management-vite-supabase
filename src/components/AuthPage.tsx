@@ -68,7 +68,7 @@ export default function AuthPage({ onSignIn, onSignUp }: AuthPageProps) {
     <div className="flex items-center justify-center min-h-screen p-4 bg-gradient-to-br from-indigo-900 via-purple-900 to-indigo-950 sm:p-6">
       <div className="w-full max-w-md">
         <div className="mb-6 text-center sm:mb-8">
-          <div className="inline-flex items-center justify-center mb-4 h-20 w-20 rounded-3xl bg-white p-1 shadow-2xl ring-1 ring-white/20 sm:h-24 sm:w-24">
+          <div className="theme-logo-surface inline-flex items-center justify-center mb-4 h-20 w-20 rounded-3xl bg-white p-1 shadow-2xl ring-1 ring-white/20 sm:h-24 sm:w-24">
             <img
               src="/images/logo.png"
               alt="LendSmart logo"
