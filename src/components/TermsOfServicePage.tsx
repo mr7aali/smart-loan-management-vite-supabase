@@ -7,7 +7,7 @@ export default function TermsOfServicePage() {
       pageTitle="Terms of Service - LendSmart"
       lastUpdated="January 1, 2025"
     >
-      <div className="rounded-2xl border border-indigo-200 bg-gradient-to-r from-indigo-50 to-violet-50 p-5 text-indigo-900">
+      <div className="p-5 text-indigo-900 border border-indigo-200 rounded-2xl bg-gradient-to-r from-indigo-50 to-violet-50">
         <p className="m-0">
           <strong>Important:</strong> By accessing or using LendSmart, you agree
           to be bound by these Terms and Conditions. If you do not agree, please
@@ -28,13 +28,16 @@ export default function TermsOfServicePage() {
         Terms and Conditions.
       </p>
       <p>
-        By creating an account, subscribing to our service, or using any part
-        of the service, you acknowledge that you have read, understood, and
-        agree to be bound by these Terms and our Privacy Policy.
+        By creating an account, subscribing to our service, or using any part of
+        the service, you acknowledge that you have read, understood, and agree
+        to be bound by these Terms and our Privacy Policy.
       </p>
 
       <h2>2. Description of Service</h2>
-      <p>LendSmart is a cloud-based loan management platform that enables users to:</p>
+      <p>
+        LendSmart is a cloud-based loan management platform that enables users
+        to:
+      </p>
       <ul>
         <li>Manage borrower information and records</li>
         <li>Create and track loans with interest calculations</li>
@@ -51,9 +54,17 @@ export default function TermsOfServicePage() {
       <h3>3.1 Eligibility</h3>
       <ul>
         <li>You must be at least 18 years old to use the service.</li>
-        <li>You must provide accurate, current, and complete registration information.</li>
-        <li>You are responsible for maintaining the security of your account credentials.</li>
-        <li>One person or entity may not maintain more than one free account.</li>
+        <li>
+          You must provide accurate, current, and complete registration
+          information.
+        </li>
+        <li>
+          You are responsible for maintaining the security of your account
+          credentials.
+        </li>
+        <li>
+          One person or entity may not maintain more than one free account.
+        </li>
       </ul>
 
       <h3>3.2 Account Security</h3>
@@ -72,35 +83,56 @@ export default function TermsOfServicePage() {
 
       <h2>4. Subscription Plans and Payments</h2>
       <h3>4.1 Subscription Tiers</h3>
-      <div className="not-prose mt-4 overflow-x-auto">
+      <div className="mt-4 overflow-x-auto not-prose">
         <table className="w-full min-w-[680px] border-collapse text-left text-sm">
           <thead>
             <tr className="border-b-2 border-slate-200 bg-slate-100">
               <th className="px-4 py-3 font-semibold text-slate-700">Plan</th>
               <th className="px-4 py-3 font-semibold text-slate-700">Price</th>
-              <th className="px-4 py-3 font-semibold text-slate-700">Features</th>
+              <th className="px-4 py-3 font-semibold text-slate-700">
+                Features
+              </th>
             </tr>
           </thead>
           <tbody>
             <tr className="border-b border-slate-200">
               <td className="px-4 py-3 font-semibold text-slate-900">Free</td>
               <td className="px-4 py-3">$0/month</td>
-              <td className="px-4 py-3">Up to 10 borrowers, up to 20 loans, basic reporting, email support, 1 user</td>
+              <td className="px-4 py-3">
+                Up to 10 borrowers, up to 20 loans, basic reporting, email
+                support, 1 user
+              </td>
             </tr>
             <tr className="border-b border-slate-200">
-              <td className="px-4 py-3 font-semibold text-slate-900">Starter</td>
+              <td className="px-4 py-3 font-semibold text-slate-900">
+                Starter
+              </td>
               <td className="px-4 py-3">$19/month</td>
-              <td className="px-4 py-3">Up to 50 borrowers, unlimited loans, advanced reporting, priority support, SMS reminders, 3 users</td>
+              <td className="px-4 py-3">
+                Up to 50 borrowers, unlimited loans, advanced reporting,
+                priority support, SMS reminders, 3 users
+              </td>
             </tr>
             <tr className="border-b border-slate-200">
-              <td className="px-4 py-3 font-semibold text-slate-900">Professional</td>
+              <td className="px-4 py-3 font-semibold text-slate-900">
+                Professional
+              </td>
               <td className="px-4 py-3">$49/month</td>
-              <td className="px-4 py-3">Up to 200 borrowers, unlimited loans, full analytics, 24/7 support, WhatsApp reminders, 10 users, API access, custom branding</td>
+              <td className="px-4 py-3">
+                Up to 200 borrowers, unlimited loans, full analytics, 24/7
+                support, WhatsApp reminders, 10 users, custom branding
+              </td>
             </tr>
             <tr className="border-b border-slate-200">
-              <td className="px-4 py-3 font-semibold text-slate-900">Enterprise</td>
+              <td className="px-4 py-3 font-semibold text-slate-900">
+                Enterprise
+              </td>
               <td className="px-4 py-3">$99/month</td>
-              <td className="px-4 py-3">Unlimited borrowers, unlimited loans, full analytics, dedicated support, all reminder types, unlimited users, API access, custom branding, white-label, SSO integration</td>
+              <td className="px-4 py-3">
+                Unlimited borrowers, unlimited loans, full analytics, dedicated
+                support, all reminder types, unlimited users, custom branding,
+                white-label, SSO integration
+              </td>
             </tr>
           </tbody>
         </table>
@@ -122,10 +154,17 @@ export default function TermsOfServicePage() {
 
       <h2>5. User Responsibilities</h2>
       <h3>5.1 Acceptable Use</h3>
-      <p>You agree to use the service only for lawful purposes. You agree not to:</p>
+      <p>
+        You agree to use the service only for lawful purposes. You agree not to:
+      </p>
       <ul>
-        <li>Use the service in a way that violates applicable laws or regulations</li>
-        <li>Violate the rights of others, including privacy and intellectual property rights</li>
+        <li>
+          Use the service in a way that violates applicable laws or regulations
+        </li>
+        <li>
+          Violate the rights of others, including privacy and intellectual
+          property rights
+        </li>
         <li>Upload or transmit malware or harmful code</li>
         <li>Attempt to gain unauthorized access to the service</li>
         <li>Interfere with or disrupt the service</li>
@@ -141,7 +180,10 @@ export default function TermsOfServicePage() {
       </p>
 
       <h2>6. Data Privacy and Security</h2>
-      <p>Your data is stored securely using industry-standard safeguards, including:</p>
+      <p>
+        Your data is stored securely using industry-standard safeguards,
+        including:
+      </p>
       <ul>
         <li>Encryption in transit and at rest</li>
         <li>Secure infrastructure through Supabase</li>
@@ -158,10 +200,21 @@ export default function TermsOfServicePage() {
 
       <h2>8. Limitation of Liability</h2>
       <ul>
-        <li>The service is provided on an &quot;as is&quot; basis without warranties.</li>
-        <li>We do not warrant that the service will be error-free or uninterrupted.</li>
-        <li>We are not liable for indirect, incidental, or consequential damages.</li>
-        <li>Our total liability will not exceed the amount paid in the preceding 12 months.</li>
+        <li>
+          The service is provided on an &quot;as is&quot; basis without
+          warranties.
+        </li>
+        <li>
+          We do not warrant that the service will be error-free or
+          uninterrupted.
+        </li>
+        <li>
+          We are not liable for indirect, incidental, or consequential damages.
+        </li>
+        <li>
+          Our total liability will not exceed the amount paid in the preceding
+          12 months.
+        </li>
       </ul>
 
       <h2>9. Termination</h2>
@@ -184,7 +237,7 @@ export default function TermsOfServicePage() {
         arbitration where applicable.
       </p>
 
-      <div className="rounded-2xl bg-slate-100 p-6">
+      <div className="p-6 rounded-2xl bg-slate-100">
         <h3 className="mt-0">Contact Us</h3>
         <p>If you have questions about these Terms, contact us at:</p>
         <p className="mb-1">
