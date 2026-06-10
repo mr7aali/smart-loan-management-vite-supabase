@@ -47,6 +47,7 @@ const TITLES: Record<string, string> = {
   help: "Help",
   "admin-overview": "Platform Overview",
   "admin-users": "User Management",
+  "workspace-users": "Workspace User Management",
 };
 
 export default function Header({

@@ -1,7 +1,7 @@
 import { corsHeaders, errorResponse, handleFunctionError, jsonResponse } from '../_shared/cors.ts';
 import { createPayPalOrder } from '../_shared/paypal.ts';
 import { isPaidSubscriptionPlanId } from '../_shared/plans.ts';
-import { requireUser } from '../_shared/supabase.ts';
+import { requireUser, requireWorkspaceManager } from '../_shared/supabase.ts';
 
 function validateCheckoutUrl(value: unknown, originHeader: string | null, label: string) {
   if (typeof value !== 'string' || !value.trim()) {
@@ -55,6 +55,8 @@ Deno.serve(async (req) => {
     if (!isPaidSubscriptionPlanId(plan)) {
       return errorResponse('A paid plan is required to create a PayPal order.', 400);
     }
+
+    await requireWorkspaceManager(user.id);
 
     const validatedReturnUrl = validateCheckoutUrl(
       body?.returnUrl,

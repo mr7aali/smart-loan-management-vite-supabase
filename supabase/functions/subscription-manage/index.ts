@@ -1,6 +1,11 @@
 import { corsHeaders, errorResponse, handleFunctionError, jsonResponse } from '../_shared/cors.ts';
 import { PLAN_DETAILS, isSubscriptionPlanId } from '../_shared/plans.ts';
-import { createAdminClient, requireUser, syncSubscriptionForUser } from '../_shared/supabase.ts';
+import {
+  createAdminClient,
+  requireUser,
+  requireWorkspaceManager,
+  syncSubscriptionForUser,
+} from '../_shared/supabase.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -21,22 +26,29 @@ Deno.serve(async (req) => {
     }
 
     const admin = createAdminClient();
+    const workspace = await requireWorkspaceManager(user.id);
     const [{ data: currentSubscription }, borrowersResult, loansResult] =
       await Promise.all([
         admin
           .from('subscriptions')
           .select('plan, status')
-          .eq('user_id', user.id)
+          .eq('organization_id', workspace.id)
           .maybeSingle(),
         admin
           .from('borrowers')
           .select('id', { count: 'exact', head: true })
-          .eq('user_id', user.id),
+          .eq('organization_id', workspace.id),
         admin
           .from('loans')
           .select('id', { count: 'exact', head: true })
-          .eq('user_id', user.id),
+          .eq('organization_id', workspace.id),
       ]);
+
+    const { count: memberCount, error: membersError } = await admin
+      .from('organization_members')
+      .select('id', { count: 'exact', head: true })
+      .eq('organization_id', workspace.id)
+      .eq('status', 'active');
 
     if (borrowersResult.error) {
       return errorResponse(
@@ -52,9 +64,24 @@ Deno.serve(async (req) => {
       );
     }
 
+    if (membersError) {
+      return errorResponse(
+        `Failed to check team limits: ${membersError.message}`,
+        500,
+      );
+    }
+
     const nextPlan = PLAN_DETAILS[plan];
     const borrowerCount = borrowersResult.count ?? 0;
     const loanCount = loansResult.count ?? 0;
+    const teamCount = memberCount ?? 0;
+
+    if (nextPlan.maxUsers !== null && teamCount > nextPlan.maxUsers) {
+      return errorResponse(
+        `The ${nextPlan.name} plan allows up to ${nextPlan.maxUsers} users. Remove members or choose a higher plan first.`,
+        400,
+      );
+    }
 
     if (
       nextPlan.maxBorrowers !== null &&

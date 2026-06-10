@@ -3,6 +3,7 @@ import { capturePayPalOrder } from '../_shared/paypal.ts';
 import { isPaidSubscriptionPlanId } from '../_shared/plans.ts';
 import {
   requireUser,
+  requireWorkspaceManager,
   savePaymentRecord,
   syncSubscriptionForUser,
 } from '../_shared/supabase.ts';
@@ -30,9 +31,11 @@ Deno.serve(async (req) => {
       return errorResponse('A paid plan is required to capture a PayPal order.', 400);
     }
 
+    const workspace = await requireWorkspaceManager(user.id);
     const capture = await capturePayPalOrder(orderId, user.id, plan);
     await savePaymentRecord({
       userId: user.id,
+      organizationId: workspace.id,
       orderId: capture.orderId,
       captureId: capture.captureId,
       planId: plan,

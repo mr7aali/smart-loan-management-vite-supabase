@@ -8,7 +8,7 @@ import {
   useNavigate,
   useParams,
 } from "react-router-dom";
-import { supabase, auth, adminApi, db } from "./lib/supabase";
+import { supabase, auth, adminApi, db, teamApi } from "./lib/supabase";
 import Dashboard from "./components/Dashboard";
 import Borrowers from "./components/Borrowers";
 import Loans from "./components/Loans";
@@ -23,6 +23,7 @@ import AddLoanModal from "./components/AddLoanModal";
 import AddRepaymentModal from "./components/AddRepaymentModal";
 import AuthPage from "./components/AuthPage";
 import SubscriptionPage from "./components/SubscriptionPage";
+import WorkspaceUsersPage from "./components/WorkspaceUsersPage";
 import EmailVerificationNotice from "./components/EmailVerificationNotice";
 import PayPalCheckoutPage from "./components/PayPalCheckoutPage";
 import AdminOverview from "./components/AdminOverview";
@@ -35,6 +36,8 @@ import {
   AdminOverviewData,
   Borrower,
   Loan,
+  OrganizationMember,
+  OrganizationWorkspace,
   Repayment,
   Subscription,
   UserProfile,
@@ -65,6 +68,7 @@ const APP_SECTIONS = [
   "settings",
   "admin-overview",
   "admin-users",
+  "workspace-users",
 ] as const;
 
 type AppSection = (typeof APP_SECTIONS)[number];
@@ -80,6 +84,7 @@ const SECTION_ROUTES: Record<AppSection, string> = {
   settings: "/settings",
   "admin-overview": "/admin/overview",
   "admin-users": "/admin/users",
+  "workspace-users": "/workspace/users",
 };
 
 const THEME_STORAGE_KEY = "lendsmart-theme";
@@ -123,6 +128,10 @@ function getSectionFromPathname(pathname: string): AppSection {
 
   if (firstSegment === "admin") {
     return secondSegment === "users" ? "admin-users" : "admin-overview";
+  }
+
+  if (firstSegment === "workspace") {
+    return "workspace-users";
   }
 
   if (isAppSection(firstSegment)) {
@@ -171,6 +180,11 @@ function App() {
   const [showAddRepayment, setShowAddRepayment] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [workspace, setWorkspace] = useState<OrganizationWorkspace | null>(
+    null,
+  );
+  const [teamMembers, setTeamMembers] = useState<OrganizationMember[]>([]);
+  const [teamLoading, setTeamLoading] = useState(false);
   const [changingSubscriptionPlan, setChangingSubscriptionPlan] =
     useState<SubscriptionPlanId | null>(null);
   const [showEmailVerification, setShowEmailVerification] = useState(false);
@@ -187,6 +201,9 @@ function App() {
   const isAdmin = profile?.role === "admin";
   const activePlan: SubscriptionPlanId =
     subscription?.plan || profile?.plan || "free";
+  const canManageTeam =
+    workspace?.currentUserRole === "owner" || workspace?.currentUserRole === "admin";
+  const showWorkspaceManagement = activePlan !== "free";
   const activeCurrency = normalizeCurrency(
     profile?.currency || DEFAULT_CURRENCY,
   );
@@ -236,13 +253,13 @@ function App() {
     };
   }, [hasOverlayOpen]);
 
-  const loadData = async (userId: string) => {
+  const loadData = async (organizationId: string) => {
     try {
       const [borrowersResult, loansResult, repaymentsResult] =
         await Promise.all([
-          db.getBorrowers(userId),
-          db.getLoans(userId),
-          db.getRepayments(userId),
+          db.getBorrowers(organizationId),
+          db.getLoans(organizationId),
+          db.getRepayments(organizationId),
         ]);
 
       setBorrowers((borrowersResult.data || []).map(normalizeBorrower));
@@ -253,9 +270,30 @@ function App() {
     }
   };
 
-  const loadSubscription = async (userId: string) => {
-    const { data } = await db.getSubscription(userId);
+  const loadSubscription = async (organizationId: string) => {
+    const { data } = await db.getSubscription(organizationId);
     setSubscription(data || null);
+  };
+
+  const loadWorkspace = async () => {
+    setTeamLoading(true);
+    try {
+      const { data, error } = await teamApi.getMembers();
+      if (error) throw error;
+
+      const nextWorkspace =
+        (data?.workspace as OrganizationWorkspace | undefined) || null;
+      setWorkspace(nextWorkspace);
+      setTeamMembers((data?.members as OrganizationMember[] | undefined) || []);
+      return nextWorkspace;
+    } catch (error) {
+      console.error("Error loading team workspace:", error);
+      setWorkspace(null);
+      setTeamMembers([]);
+      return null;
+    } finally {
+      setTeamLoading(false);
+    }
   };
 
   const loadProfile = async (userId: string) => {
@@ -270,12 +308,36 @@ function App() {
     return normalizedProfile;
   };
 
+  const hydrateUserData = async (userId: string) => {
+    await loadProfile(userId);
+    const nextWorkspace = await loadWorkspace();
+
+    if (nextWorkspace?.id) {
+      await Promise.all([
+        loadData(nextWorkspace.id),
+        loadSubscription(nextWorkspace.id),
+      ]);
+    } else {
+      setBorrowers([]);
+      setLoans([]);
+      setRepayments([]);
+      setSubscription(null);
+    }
+  };
+
   const getPlanLimitViolation = (
     planId: SubscriptionPlanId,
     nextBorrowerCount: number,
     nextLoanCount: number,
+    nextUserCount = teamMembers.length,
   ) => {
     const plan = SUBSCRIPTION_PLANS_BY_ID[planId];
+
+    if (plan.maxUsers !== null && nextUserCount > plan.maxUsers) {
+      return `The ${plan.name} plan allows up to ${plan.maxUsers} user${
+        plan.maxUsers === 1 ? "" : "s"
+      }.`;
+    }
 
     if (
       plan.maxBorrowers !== null &&
@@ -341,12 +403,10 @@ function App() {
       window.history.replaceState({}, document.title, window.location.pathname);
     }
 
-    auth.getCurrentUser().then((currentUser) => {
+    auth.getCurrentUser().then(async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
-        void loadData(currentUser.id);
-        void loadSubscription(currentUser.id);
-        void loadProfile(currentUser.id);
+        await hydrateUserData(currentUser.id);
       }
       setLoading(false);
     });
@@ -356,9 +416,7 @@ function App() {
     } = auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        void loadData(session.user.id);
-        void loadSubscription(session.user.id);
-        void loadProfile(session.user.id);
+        void hydrateUserData(session.user.id);
 
         if (event === "SIGNED_IN" && session.user.email_confirmed_at === null) {
           setShowEmailVerification(true);
@@ -371,6 +429,8 @@ function App() {
         setRepayments([]);
         setSubscription(null);
         setProfile(null);
+        setWorkspace(null);
+        setTeamMembers([]);
         setAdminOverview(null);
         setAdminUsers([]);
       }
@@ -382,50 +442,50 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!workspace?.id) return;
 
     const refreshUserData = () => {
-      void loadData(user.id);
-      void loadSubscription(user.id);
+      void loadData(workspace.id);
+      void loadSubscription(workspace.id);
     };
 
     const borrowersChannel = supabase
-      .channel(`borrowers-changes-${user.id}`)
+      .channel(`borrowers-changes-${workspace.id}`)
       .on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
           table: "borrowers",
-          filter: `user_id=eq.${user.id}`,
+          filter: `organization_id=eq.${workspace.id}`,
         },
         refreshUserData,
       )
       .subscribe();
 
     const loansChannel = supabase
-      .channel(`loans-changes-${user.id}`)
+      .channel(`loans-changes-${workspace.id}`)
       .on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
           table: "loans",
-          filter: `user_id=eq.${user.id}`,
+          filter: `organization_id=eq.${workspace.id}`,
         },
         refreshUserData,
       )
       .subscribe();
 
     const repaymentsChannel = supabase
-      .channel(`repayments-changes-${user.id}`)
+      .channel(`repayments-changes-${workspace.id}`)
       .on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
           table: "repayments",
-          filter: `user_id=eq.${user.id}`,
+          filter: `organization_id=eq.${workspace.id}`,
         },
         refreshUserData,
       )
@@ -436,7 +496,7 @@ function App() {
       loansChannel.unsubscribe();
       repaymentsChannel.unsubscribe();
     };
-  }, [user?.id]);
+  }, [workspace?.id]);
 
   useEffect(() => {
     if (!user?.id || !isAdmin) {
@@ -499,6 +559,8 @@ function App() {
     setRepayments([]);
     setSubscription(null);
     setProfile(null);
+    setWorkspace(null);
+    setTeamMembers([]);
     setAdminOverview(null);
     setAdminUsers([]);
     setShowEmailVerification(false);
@@ -506,7 +568,7 @@ function App() {
   };
 
   const handleAddBorrower = async (borrower: Omit<Borrower, "id">) => {
-    if (!user) return;
+    if (!user || !workspace?.id) return;
     const planLimitViolation = getPlanLimitViolation(
       activePlan,
       borrowers.length + 1,
@@ -519,7 +581,7 @@ function App() {
     }
 
     try {
-      const { data, error } = await db.addBorrower(user.id, {
+      const { data, error } = await db.addBorrower(user.id, workspace.id, {
         name: borrower.name,
         email: borrower.email,
         phone: borrower.phone,
@@ -538,7 +600,7 @@ function App() {
   };
 
   const handleAddLoan = async (loan: Omit<Loan, "id">) => {
-    if (!user) return;
+    if (!user || !workspace?.id) return;
     const planLimitViolation = getPlanLimitViolation(
       activePlan,
       borrowers.length,
@@ -551,7 +613,7 @@ function App() {
     }
 
     try {
-      const { data, error } = await db.addLoan(user.id, {
+      const { data, error } = await db.addLoan(user.id, workspace.id, {
         borrower_id: loan.borrowerId,
         amount: loan.amount,
         interest_rate: loan.interestRate,
@@ -577,9 +639,9 @@ function App() {
   };
 
   const handleAddRepayment = async (repayment: Omit<Repayment, "id">) => {
-    if (!user) return;
+    if (!user || !workspace?.id) return;
     try {
-      const { data, error } = await db.addRepayment(user.id, {
+      const { data, error } = await db.addRepayment(user.id, workspace.id, {
         loan_id: repayment.loanId,
         amount: repayment.amount,
         date: repayment.date,
@@ -670,6 +732,11 @@ function App() {
   const handleSubscriptionChange = async (plan: SubscriptionPlanId) => {
     if (!user) return;
 
+    if (!canManageTeam) {
+      alert("Only a workspace owner or admin can change the subscription plan.");
+      return;
+    }
+
     if (plan === activePlan) {
       return;
     }
@@ -703,6 +770,7 @@ function App() {
 
         setSubscription(data.subscription as Subscription);
         await loadProfile(user.id);
+        await loadWorkspace();
         navigate("/subscription", { replace: true });
         alert(`You are now on the ${SUBSCRIPTION_PLANS_BY_ID[plan].name} plan.`);
       } catch (error) {
@@ -741,6 +809,7 @@ function App() {
 
       setSubscription(data.subscription as Subscription);
       await loadProfile(user.id);
+      await loadWorkspace();
       navigate("/subscription", { replace: true });
       alert(`You are now on the ${SUBSCRIPTION_PLANS_BY_ID[plan].name} plan.`);
     } catch (error) {
@@ -759,8 +828,46 @@ function App() {
     setSubscription(nextSubscription);
     if (user?.id) {
       void loadProfile(user.id);
+      void loadWorkspace();
     }
     navigate("/subscription", { replace: true });
+  };
+
+  const handleAddTeamMember = async (email: string) => {
+    if (!canManageTeam) {
+      throw new Error("Only a workspace owner or admin can add members.");
+    }
+
+    const planLimitViolation = getPlanLimitViolation(
+      activePlan,
+      borrowers.length,
+      loans.length,
+      teamMembers.length + 1,
+    );
+
+    if (planLimitViolation) {
+      throw new Error(`${planLimitViolation} Upgrade your subscription to add more members.`);
+    }
+
+    const { error } = await teamApi.addMember(email);
+    if (error) {
+      throw error;
+    }
+
+    await loadWorkspace();
+  };
+
+  const handleRemoveTeamMember = async (memberId: string) => {
+    if (!canManageTeam) {
+      throw new Error("Only a workspace owner or admin can remove members.");
+    }
+
+    const { error } = await teamApi.removeMember(memberId);
+    if (error) {
+      throw error;
+    }
+
+    await loadWorkspace();
   };
 
   const handleOpenAddBorrower = () => {
@@ -951,6 +1058,7 @@ function App() {
         user={user}
         onSignOut={handleSignOut}
         isAdmin={isAdmin}
+        showWorkspaceManagement={showWorkspaceManagement}
       />
       <div className="flex flex-col flex-1 min-w-0 min-h-screen md:h-screen">
         <Header
@@ -1068,6 +1176,24 @@ function App() {
           onToggleDarkMode={() => setDarkMode((enabled) => !enabled)}
           subscription={subscription}
         />
+              }
+            />
+            <Route
+              path="/workspace/users"
+              element={
+                showWorkspaceManagement ? (
+                  <WorkspaceUsersPage
+                    workspace={workspace}
+                    teamMembers={teamMembers}
+                    teamLoading={teamLoading}
+                    canManageTeam={canManageTeam}
+                    currentPlan={activePlan}
+                    onAddTeamMember={handleAddTeamMember}
+                    onRemoveTeamMember={handleRemoveTeamMember}
+                  />
+                ) : (
+                  <Navigate to="/subscription" replace />
+                )
               }
             />
             <Route

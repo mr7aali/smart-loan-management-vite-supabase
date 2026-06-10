@@ -1,6 +1,7 @@
 export interface Borrower {
   id: string;
   user_id?: string;
+  organization_id?: string;
   name: string;
   email: string;
   phone: string;
@@ -13,6 +14,7 @@ export interface Borrower {
 export interface Loan {
   id: string;
   user_id?: string;
+  organization_id?: string;
   borrower_id?: string;
   borrowerId?: string;
   amount: number;
@@ -34,6 +36,7 @@ export interface Loan {
 export interface Repayment {
   id: string;
   user_id?: string;
+  organization_id?: string;
   loan_id?: string;
   loanId?: string;
   amount: number;
@@ -56,6 +59,7 @@ export interface Reminder {
 export interface Subscription {
   id: string;
   user_id: string;
+  organization_id?: string;
   plan: 'free' | 'starter' | 'professional' | 'enterprise';
   status: 'active' | 'cancelled' | 'expired';
   billing_cycle: 'monthly' | 'yearly';
@@ -71,6 +75,7 @@ export type AccountStatus = "active" | "suspended";
 export interface UserProfile {
   id: string;
   email: string | null;
+  current_organization_id?: string | null;
   full_name?: string | null;
   phone?: string | null;
   role: UserRole;
@@ -81,6 +86,29 @@ export interface UserProfile {
   max_loans?: number | null;
   created_at?: string;
   updated_at?: string;
+}
+
+export type OrganizationMemberRole = "owner" | "admin" | "member";
+
+export interface OrganizationWorkspace {
+  id: string;
+  name: string;
+  owner_id: string;
+  currentUserRole: OrganizationMemberRole;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface OrganizationMember {
+  id: string;
+  organization_id: string;
+  user_id: string;
+  role: OrganizationMemberRole;
+  status: "active";
+  email: string | null;
+  fullName?: string | null;
+  joined_at?: string | null;
+  created_at?: string;
 }
 
 export interface PaymentRecord {
