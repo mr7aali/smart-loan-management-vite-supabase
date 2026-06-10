@@ -9,6 +9,42 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+async function normalizeFunctionError(error: unknown) {
+  const maybeContext = (error as { context?: unknown })?.context;
+
+  if (maybeContext instanceof Response) {
+    try {
+      const payload = await maybeContext.clone().json();
+      if (typeof payload?.error === 'string') {
+        return new Error(payload.error);
+      }
+      if (typeof payload?.message === 'string') {
+        return new Error(payload.message);
+      }
+    } catch {
+      // Fall back to the SDK error message below.
+    }
+  }
+
+  if (error instanceof Error) {
+    return error;
+  }
+
+  return new Error('Failed to call Edge Function.');
+}
+
+async function invokeFunction<TBody extends Record<string, unknown>>(
+  name: string,
+  body: TBody,
+) {
+  const { data, error } = await supabase.functions.invoke(name, { body });
+
+  return {
+    data,
+    error: error ? await normalizeFunctionError(error) : null,
+  };
+}
+
 // Auth helpers
 export const auth = {
   async signUp(email: string, password: string, name: string) {
@@ -113,19 +149,19 @@ export const db = {
   },
 
   // Borrowers
-  async getBorrowers(userId: string) {
+  async getBorrowers(organizationId: string) {
     const { data, error } = await supabase
       .from('borrowers')
       .select('*')
-      .eq('user_id', userId)
+      .eq('organization_id', organizationId)
       .order('created_at', { ascending: false });
     return { data, error };
   },
 
-  async addBorrower(userId: string, borrower: any) {
+  async addBorrower(userId: string, organizationId: string, borrower: any) {
     const { data, error } = await supabase
       .from('borrowers')
-      .insert([{ ...borrower, user_id: userId }])
+      .insert([{ ...borrower, user_id: userId, organization_id: organizationId }])
       .select()
       .single();
     return { data, error };
@@ -149,19 +185,19 @@ export const db = {
   },
 
   // Loans
-  async getLoans(userId: string) {
+  async getLoans(organizationId: string) {
     const { data, error } = await supabase
       .from('loans')
       .select('*, borrowers(*)')
-      .eq('user_id', userId)
+      .eq('organization_id', organizationId)
       .order('created_at', { ascending: false });
     return { data, error };
   },
 
-  async addLoan(userId: string, loan: any) {
+  async addLoan(userId: string, organizationId: string, loan: any) {
     const { data, error } = await supabase
       .from('loans')
-      .insert([{ ...loan, user_id: userId }])
+      .insert([{ ...loan, user_id: userId, organization_id: organizationId }])
       .select()
       .single();
     return { data, error };
@@ -185,31 +221,31 @@ export const db = {
   },
 
   // Repayments
-  async getRepayments(userId: string) {
+  async getRepayments(organizationId: string) {
     const { data, error } = await supabase
       .from('repayments')
       .select('*, loans(*)')
-      .eq('user_id', userId)
+      .eq('organization_id', organizationId)
       .order('date', { ascending: false });
     return { data, error };
   },
 
-  async addRepayment(userId: string, repayment: any) {
+  async addRepayment(userId: string, organizationId: string, repayment: any) {
     const { data, error } = await supabase
       .from('repayments')
-      .insert([{ ...repayment, user_id: userId }])
+      .insert([{ ...repayment, user_id: userId, organization_id: organizationId }])
       .select()
       .single();
     return { data, error };
   },
 
   // Subscriptions
-  async getSubscription(userId: string) {
+  async getSubscription(organizationId: string) {
     const { data, error } = await supabase
       .from('subscriptions')
       .select('*')
-      .eq('user_id', userId)
-      .single();
+      .eq('organization_id', organizationId)
+      .maybeSingle();
     return { data, error };
   },
 
@@ -230,6 +266,20 @@ export const db = {
       .select()
       .single();
     return { data, error };
+  },
+};
+
+export const teamApi = {
+  async getMembers() {
+    return invokeFunction('team-members', { action: 'list' });
+  },
+
+  async addMember(email: string) {
+    return invokeFunction('team-members', { action: 'add', email });
+  },
+
+  async removeMember(memberId: string) {
+    return invokeFunction('team-members', { action: 'remove', memberId });
   },
 };
 

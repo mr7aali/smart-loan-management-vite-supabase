@@ -1,4 +1,10 @@
-import { Settings, Bell, Shield, Database, LogOut } from "lucide-react";
+import {
+  Settings,
+  Bell,
+  Shield,
+  Database,
+  LogOut,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { User } from "@supabase/supabase-js";
 import { AppCurrency, normalizeCurrency, SUPPORTED_CURRENCIES } from "../utils";

@@ -24,6 +24,7 @@ interface SidebarProps {
   user?: User | null;
   onSignOut?: () => void;
   isAdmin?: boolean;
+  showWorkspaceManagement?: boolean;
 }
 
 const menuItems = [
@@ -44,6 +45,7 @@ export default function Sidebar({
   user,
   onSignOut,
   isAdmin = false,
+  showWorkspaceManagement = false,
 }: SidebarProps) {
   const isMobile = useIsMobile();
 
@@ -64,6 +66,9 @@ export default function Sidebar({
   const adminMenuItems = [
     { id: "admin-overview", label: "Platform", icon: ShieldCheck },
     { id: "admin-users", label: "User Management", icon: UserCog },
+  ];
+  const workspaceMenuItems = [
+    { id: "workspace-users", label: "User Management", icon: UserCog },
   ];
   const asideClasses = isMobile
     ? `fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] transform bg-gradient-to-b from-indigo-900 to-indigo-950 text-white transition-transform duration-300 ${
@@ -129,6 +134,33 @@ export default function Sidebar({
               </button>
             );
           })}
+
+          {showWorkspaceManagement && showLabels && (
+            <div className="px-4 pb-2 pt-5">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-indigo-300">
+                Workspace
+              </p>
+            </div>
+          )}
+
+          {showWorkspaceManagement &&
+            workspaceMenuItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleSectionChange(item.id)}
+                  className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors ${
+                    activeSection === item.id
+                      ? "bg-amber-500 font-semibold text-indigo-950"
+                      : "hover:bg-indigo-800"
+                  } ${!showLabels ? "justify-center px-2" : ""}`}
+                >
+                  <Icon className="w-5 h-5 shrink-0" />
+                  {showLabels && <span>{item.label}</span>}
+                </button>
+              );
+            })}
 
           {isAdmin && showLabels && (
             <div className="px-4 pb-2 pt-5">

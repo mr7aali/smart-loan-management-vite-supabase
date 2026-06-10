@@ -173,20 +173,6 @@ export async function backfillAccountRecordsForAuthUsers(authUsers: User[]) {
       updated_at: nowIso,
     }));
 
-  const missingSubscriptions = authUsers
-    .filter((user) => !existingSubscriptionIds.has(user.id))
-    .map((user) => ({
-      user_id: user.id,
-      plan: "free",
-      status: "active",
-      billing_cycle: "monthly",
-      price: PLAN_DETAILS.free.price,
-      start_date: user.created_at ?? nowIso,
-      end_date: null,
-      created_at: user.created_at ?? nowIso,
-      updated_at: nowIso,
-    }));
-
   if (missingProfiles.length > 0) {
     const { error } = await admin.from("profiles").upsert(missingProfiles, {
       onConflict: "id",
@@ -199,6 +185,127 @@ export async function backfillAccountRecordsForAuthUsers(authUsers: User[]) {
       );
     }
   }
+
+  const { data: profilesAfterBackfill, error: profilesAfterBackfillError } =
+    await admin
+      .from("profiles")
+      .select("id, email, full_name, created_at, current_organization_id")
+      .in("id", userIds);
+
+  if (profilesAfterBackfillError) {
+    throw new HttpError(
+      500,
+      `Failed to load profile workspaces: ${profilesAfterBackfillError.message}`,
+    );
+  }
+
+  const profilesNeedingOrganizations = (profilesAfterBackfill ?? []).filter(
+    (profile) => !profile.current_organization_id,
+  );
+
+  if (profilesNeedingOrganizations.length > 0) {
+    const { data: createdOrganizations, error: organizationError } =
+      await admin
+        .from("organizations")
+        .insert(
+          profilesNeedingOrganizations.map((profile) => ({
+            owner_id: profile.id,
+            name: `${
+              profile.full_name || profile.email || "Workspace"
+            } Workspace`,
+            created_at: profile.created_at ?? nowIso,
+            updated_at: nowIso,
+          })),
+        )
+        .select("id, owner_id");
+
+    if (organizationError) {
+      throw new HttpError(
+        500,
+        `Failed to create user workspaces: ${organizationError.message}`,
+      );
+    }
+
+    await Promise.all(
+      (createdOrganizations ?? []).map((organization) =>
+        admin
+          .from("profiles")
+          .update({
+            current_organization_id: organization.id,
+            updated_at: nowIso,
+          })
+          .eq("id", organization.owner_id),
+      ),
+    );
+  }
+
+  const { data: workspaceProfiles, error: workspaceProfilesError } =
+    await admin
+      .from("profiles")
+      .select("id, created_at, current_organization_id")
+      .in("id", userIds);
+
+  if (workspaceProfilesError) {
+    throw new HttpError(
+      500,
+      `Failed to reload user workspaces: ${workspaceProfilesError.message}`,
+    );
+  }
+
+  const profilesWithWorkspaces = (workspaceProfiles ?? []).filter(
+    (profile) => profile.current_organization_id,
+  );
+
+  if (profilesWithWorkspaces.length > 0) {
+    const { error: membersError } = await admin
+      .from("organization_members")
+      .upsert(
+        profilesWithWorkspaces.map((profile) => ({
+          organization_id: profile.current_organization_id,
+          user_id: profile.id,
+          role: "owner",
+          status: "active",
+          joined_at: profile.created_at ?? nowIso,
+          created_at: profile.created_at ?? nowIso,
+          updated_at: nowIso,
+        })),
+        {
+          onConflict: "organization_id,user_id",
+        },
+      );
+
+    if (membersError) {
+      throw new HttpError(
+        500,
+        `Failed to backfill workspace memberships: ${membersError.message}`,
+      );
+    }
+  }
+
+  const workspaceProfileById = new Map(
+    profilesWithWorkspaces.map((profile) => [profile.id as string, profile]),
+  );
+
+  const missingSubscriptions = authUsers
+    .filter((user) => !existingSubscriptionIds.has(user.id))
+    .map((user) => {
+      const workspaceProfile = workspaceProfileById.get(user.id);
+      return workspaceProfile?.current_organization_id
+        ? {
+            user_id: user.id,
+            organization_id: workspaceProfile.current_organization_id,
+            plan: "free",
+            status: "active",
+            billing_cycle: "monthly",
+            price: PLAN_DETAILS.free.price,
+            start_date: user.created_at ?? nowIso,
+            end_date: null,
+            created_at: user.created_at ?? nowIso,
+            updated_at: nowIso,
+          }
+        : null;
+    })
+    .filter(Boolean);
 
   if (missingSubscriptions.length > 0) {
     const { error } = await admin
@@ -254,6 +361,95 @@ export async function requireAdminUser(req: Request): Promise<User> {
   return user;
 }
 
+export interface WorkspaceContext {
+  id: string;
+  name: string;
+  owner_id: string;
+  currentUserRole: "owner" | "admin" | "member";
+}
+
+export async function getWorkspaceForUser(userId: string): Promise<WorkspaceContext> {
+  const admin = createAdminClient();
+  const { data: profile, error: profileError } = await admin
+    .from("profiles")
+    .select("current_organization_id")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (profileError) {
+    throw new HttpError(
+      500,
+      `Failed to load workspace profile: ${profileError.message}`,
+    );
+  }
+
+  let membershipQuery = admin
+    .from("organization_members")
+    .select("role, organizations(id, name, owner_id)")
+    .eq("user_id", userId)
+    .eq("status", "active");
+
+  if (profile?.current_organization_id) {
+    membershipQuery = membershipQuery.eq(
+      "organization_id",
+      profile.current_organization_id,
+    );
+  }
+
+  let { data: membership, error: membershipError } =
+    await membershipQuery.maybeSingle();
+
+  if ((!membership || membershipError) && profile?.current_organization_id) {
+    const fallback = await admin
+      .from("organization_members")
+      .select("role, organizations(id, name, owner_id)")
+      .eq("user_id", userId)
+      .eq("status", "active")
+      .limit(1)
+      .maybeSingle();
+    membership = fallback.data;
+    membershipError = fallback.error;
+  }
+
+  if (membershipError) {
+    throw new HttpError(
+      500,
+      `Failed to load workspace membership: ${membershipError.message}`,
+    );
+  }
+
+  const organization = Array.isArray(membership?.organizations)
+    ? membership?.organizations[0]
+    : membership?.organizations;
+
+  if (!membership || !organization) {
+    throw new HttpError(403, "No active workspace membership found.");
+  }
+
+  return {
+    id: organization.id,
+    name: organization.name,
+    owner_id: organization.owner_id,
+    currentUserRole: membership.role,
+  };
+}
+
+export async function requireWorkspaceManager(userId: string) {
+  const workspace = await getWorkspaceForUser(userId);
+
+  if (
+    workspace.currentUserRole !== "owner" &&
+    workspace.currentUserRole !== "admin"
+  ) {
+    throw new HttpError(
+      403,
+      "Only a workspace owner or admin can manage this subscription.",
+    );
+  }
+
+  return workspace;
+}
+
 function getPlanLimits(planId: SubscriptionPlanId) {
   const plan = PLAN_DETAILS[planId];
   return {
@@ -268,6 +464,7 @@ export async function syncSubscriptionForUser(
   planId: SubscriptionPlanId,
 ) {
   const admin = createAdminClient();
+  const workspace = await requireWorkspaceManager(userId);
   const plan = PLAN_DETAILS[planId];
   const now = new Date();
   const nowIso = now.toISOString();
@@ -282,7 +479,8 @@ export async function syncSubscriptionForUser(
     .from("subscriptions")
     .upsert(
       {
-        user_id: userId,
+        user_id: workspace.owner_id,
+        organization_id: workspace.id,
         plan: planId,
         status: "active",
         billing_cycle: "monthly",
@@ -292,7 +490,7 @@ export async function syncSubscriptionForUser(
         updated_at: nowIso,
       },
       {
-        onConflict: "user_id",
+        onConflict: "organization_id",
       },
     )
     .select()
@@ -311,7 +509,7 @@ export async function syncSubscriptionForUser(
       ...getPlanLimits(planId),
       updated_at: nowIso,
     })
-    .eq("id", userId);
+    .eq("id", workspace.owner_id);
 
   if (profileError) {
     throw new HttpError(
@@ -325,6 +523,7 @@ export async function syncSubscriptionForUser(
 
 interface PaymentRecordInput {
   userId: string;
+  organizationId?: string;
   orderId: string;
   captureId: string;
   planId: SubscriptionPlanId;
@@ -337,6 +536,7 @@ interface PaymentRecordInput {
 
 export async function savePaymentRecord({
   userId,
+  organizationId,
   orderId,
   captureId,
   planId,
@@ -351,10 +551,14 @@ export async function savePaymentRecord({
   }
 
   const admin = createAdminClient();
+  const workspace = organizationId
+    ? { id: organizationId }
+    : await getWorkspaceForUser(userId);
   const nowIso = new Date().toISOString();
   const { error } = await admin.from("payments").upsert(
     {
       user_id: userId,
+      organization_id: workspace.id,
       provider,
       provider_order_id: orderId,
       provider_capture_id: captureId,
@@ -424,6 +628,7 @@ export async function updateUserAccessAndSubscription(options: {
     .select("*")
     .eq("user_id", userId)
     .maybeSingle();
+  const workspace = await getWorkspaceForUser(userId);
 
   const nextPlanId = planId ?? existingSubscription?.plan ?? existingProfile.plan;
   if (!isSubscriptionPlanId(nextPlanId)) {
@@ -472,6 +677,7 @@ export async function updateUserAccessAndSubscription(options: {
     .upsert(
       {
         user_id: userId,
+        organization_id: workspace.id,
         plan: nextPlanId,
         status: subscriptionStatus ?? existingSubscription?.status ?? "active",
         billing_cycle: existingSubscription?.billing_cycle ?? "monthly",

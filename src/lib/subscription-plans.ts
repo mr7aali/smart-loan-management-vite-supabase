@@ -14,6 +14,7 @@ export interface SubscriptionPlan {
   limits: string;
   maxBorrowers: number | null;
   maxLoans: number | null;
+  maxUsers: number | null;
   popular?: boolean;
   features: string[];
 }
@@ -27,6 +28,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     limits: "10 borrowers",
     maxBorrowers: 10,
     maxLoans: 20,
+    maxUsers: 1,
     features: [
       "Up to 10 borrowers",
       "Up to 20 loans",
@@ -43,6 +45,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     limits: "50 borrowers",
     maxBorrowers: 50,
     maxLoans: null,
+    maxUsers: 3,
     features: [
       "Up to 50 borrowers",
       "Unlimited loans",
@@ -60,6 +63,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     limits: "200 borrowers",
     maxBorrowers: 200,
     maxLoans: null,
+    maxUsers: 10,
     popular: true,
     features: [
       "Up to 200 borrowers",
@@ -80,6 +84,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     limits: "Unlimited",
     maxBorrowers: null,
     maxLoans: null,
+    maxUsers: null,
     features: [
       "Unlimited borrowers",
       "Unlimited loans",

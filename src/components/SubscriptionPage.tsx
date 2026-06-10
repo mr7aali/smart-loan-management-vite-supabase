@@ -1,4 +1,10 @@
-import { Check, Sparkles, Crown, Building2, Zap } from 'lucide-react';
+import {
+  Check,
+  Sparkles,
+  Crown,
+  Building2,
+  Zap,
+} from 'lucide-react';
 import { SUBSCRIPTION_PLANS, SubscriptionPlanId } from '../lib/subscription-plans';
 
 interface SubscriptionPageProps {
