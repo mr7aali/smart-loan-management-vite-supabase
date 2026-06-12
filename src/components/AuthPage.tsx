@@ -1,14 +1,21 @@
 import { useState } from "react";
-import { Lock, Mail, User, ArrowRight } from "lucide-react";
+import { Lock, Mail, User, ArrowRight, KeyRound } from "lucide-react";
 import { Link } from "react-router-dom";
 
 interface AuthPageProps {
   onSignIn: (email: string, password: string) => Promise<any>;
   onSignUp: (email: string, password: string, name: string) => Promise<any>;
+  onPasswordReset: (email: string) => Promise<any>;
 }
 
-export default function AuthPage({ onSignIn, onSignUp }: AuthPageProps) {
-  const [isLogin, setIsLogin] = useState(true);
+type AuthMode = "login" | "signup" | "forgot";
+
+export default function AuthPage({
+  onSignIn,
+  onSignUp,
+  onPasswordReset,
+}: AuthPageProps) {
+  const [authMode, setAuthMode] = useState<AuthMode>("login");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -26,9 +33,9 @@ export default function AuthPage({ onSignIn, onSignUp }: AuthPageProps) {
     setLoading(true);
 
     try {
-      if (isLogin) {
+      if (authMode === "login") {
         await onSignIn(formData.email, formData.password);
-      } else {
+      } else if (authMode === "signup") {
         if (formData.password !== formData.confirmPassword) {
           setError("Passwords do not match");
           setLoading(false);
@@ -40,7 +47,7 @@ export default function AuthPage({ onSignIn, onSignUp }: AuthPageProps) {
           return;
         }
         await onSignUp(formData.email, formData.password, formData.name);
-        setIsLogin(true);
+        setAuthMode("login");
         setFormData((current) => ({
           ...current,
           name: "",
@@ -49,6 +56,11 @@ export default function AuthPage({ onSignIn, onSignUp }: AuthPageProps) {
         }));
         setSuccessMessage(
           "Account created. If you receive a verification email, confirm it first, then sign in.",
+        );
+      } else {
+        await onPasswordReset(formData.email);
+        setSuccessMessage(
+          "Password reset link sent. Please check your email to set a new password.",
         );
       }
     } catch (err: any) {
@@ -63,6 +75,22 @@ export default function AuthPage({ onSignIn, onSignUp }: AuthPageProps) {
     setError("");
     setSuccessMessage("");
   };
+
+  const switchMode = (nextMode: AuthMode) => {
+    setAuthMode(nextMode);
+    setError("");
+    setSuccessMessage("");
+    setFormData((current) => ({
+      ...current,
+      name: nextMode === "signup" ? current.name : "",
+      password: "",
+      confirmPassword: "",
+    }));
+  };
+
+  const isLogin = authMode === "login";
+  const isSignup = authMode === "signup";
+  const isForgotPassword = authMode === "forgot";
 
   return (
     <div className="flex items-center justify-center min-h-screen p-4 bg-gradient-to-br from-indigo-900 via-purple-900 to-indigo-950 sm:p-6">
@@ -86,10 +114,18 @@ export default function AuthPage({ onSignIn, onSignUp }: AuthPageProps) {
         <div className="p-6 bg-white shadow-2xl rounded-2xl sm:p-8">
           <div className="mb-6 text-center">
             <h2 className="text-xl font-bold text-gray-800 sm:text-2xl">
-              {isLogin ? "Welcome Back" : "Create Account"}
+              {isLogin
+                ? "Welcome Back"
+                : isSignup
+                  ? "Create Account"
+                  : "Reset Password"}
             </h2>
             <p className="mt-1 text-gray-500">
-              {isLogin ? "Sign in to continue" : "Start your 14-day free trial"}
+              {isLogin
+                ? "Sign in to continue"
+                : isSignup
+                  ? "Start your 14-day free trial"
+                  : "Enter your email to receive a secure reset link"}
             </p>
           </div>
 
@@ -106,7 +142,7 @@ export default function AuthPage({ onSignIn, onSignUp }: AuthPageProps) {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {!isLogin && (
+            {isSignup && (
               <div>
                 <label className="block mb-1 text-sm font-medium text-gray-700">
                   Full Name
@@ -142,24 +178,37 @@ export default function AuthPage({ onSignIn, onSignUp }: AuthPageProps) {
               </div>
             </div>
 
-            <div>
-              <label className="block mb-1 text-sm font-medium text-gray-700">
-                Password
-              </label>
-              <div className="relative">
-                <Lock className="absolute w-4 h-4 text-gray-400 -translate-y-1/2 left-3 top-1/2" />
-                <input
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => handleChange("password", e.target.value)}
-                  placeholder="Enter your password"
-                  required
-                  className="w-full py-3 pl-10 pr-4 border border-gray-200 rounded-xl focus:border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
+            {!isForgotPassword && (
+              <div>
+                <div className="flex items-center justify-between gap-3 mb-1">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Password
+                  </label>
+                  {isLogin && (
+                    <button
+                      type="button"
+                      onClick={() => switchMode("forgot")}
+                      className="text-sm font-semibold text-indigo-600 hover:text-indigo-700"
+                    >
+                      Forgot password?
+                    </button>
+                  )}
+                </div>
+                <div className="relative">
+                  <Lock className="absolute w-4 h-4 text-gray-400 -translate-y-1/2 left-3 top-1/2" />
+                  <input
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => handleChange("password", e.target.value)}
+                    placeholder="Enter your password"
+                    required
+                    className="w-full py-3 pl-10 pr-4 border border-gray-200 rounded-xl focus:border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
-            {!isLogin && (
+            {isSignup && (
               <div>
                 <label className="block mb-1 text-sm font-medium text-gray-700">
                   Confirm Password
@@ -189,8 +238,16 @@ export default function AuthPage({ onSignIn, onSignUp }: AuthPageProps) {
                 <div className="w-5 h-5 border-b-2 border-white rounded-full animate-spin"></div>
               ) : (
                 <>
-                  {isLogin ? "Sign In" : "Create Account"}
-                  <ArrowRight className="w-4 h-4" />
+                  {isLogin
+                    ? "Sign In"
+                    : isSignup
+                      ? "Create Account"
+                      : "Send Reset Link"}
+                  {isForgotPassword ? (
+                    <KeyRound className="w-4 h-4" />
+                  ) : (
+                    <ArrowRight className="w-4 h-4" />
+                  )}
                 </>
               )}
             </button>
@@ -198,12 +255,14 @@ export default function AuthPage({ onSignIn, onSignUp }: AuthPageProps) {
 
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-500">
-              {isLogin ? "Don't have an account?" : "Already have an account?"}
+              {isLogin
+                ? "Don't have an account?"
+                : isSignup
+                  ? "Already have an account?"
+                  : "Remembered your password?"}
               <button
                 onClick={() => {
-                  setIsLogin(!isLogin);
-                  setError("");
-                  setSuccessMessage("");
+                  switchMode(isLogin ? "signup" : "login");
                 }}
                 className="ml-1 font-semibold text-indigo-600 hover:text-indigo-700"
               >
