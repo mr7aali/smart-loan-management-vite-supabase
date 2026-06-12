@@ -12,6 +12,7 @@ import {
   HelpCircle,
   LogOut,
   ShieldCheck,
+  ClipboardCheck,
 } from "lucide-react";
 import { User } from "@supabase/supabase-js";
 import { useIsMobile } from "../hooks/use-mobile";
@@ -66,9 +67,11 @@ export default function Sidebar({
   const adminMenuItems = [
     { id: "admin-overview", label: "Platform", icon: ShieldCheck },
     { id: "admin-users", label: "User Management", icon: UserCog },
+    { id: "admin-workspaces", label: "Workspaces", icon: Users },
   ];
   const workspaceMenuItems = [
     { id: "workspace-users", label: "User Management", icon: UserCog },
+    { id: "workspace-approvals", label: "Approvals", icon: ClipboardCheck },
   ];
   const asideClasses = isMobile
     ? `fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] transform bg-gradient-to-b from-indigo-900 to-indigo-950 text-white transition-transform duration-300 ${

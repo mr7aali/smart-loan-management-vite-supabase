@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import {
   CalendarClock,
   CreditCard,
+  Download,
   Search,
   ShieldCheck,
   UserCog,
@@ -14,6 +15,7 @@ import {
   UserRole,
 } from "../types";
 import PaginationControls from "./PaginationControls";
+import { downloadCsv } from "../lib/export";
 
 interface AdminUsersPageProps {
   users: AdminManagedUser[];
@@ -177,6 +179,32 @@ export default function AdminUsersPage({
     }
   };
 
+  const handleExportUsers = () => {
+    downloadCsv(
+      `admin-user-management-${new Date().toISOString().slice(0, 10)}.csv`,
+      filteredUsers.map((user) => ({
+        user_id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone || "",
+        role: user.role,
+        account_status: user.accountStatus,
+        profile_plan: user.plan,
+        subscription_plan: user.subscription?.plan || "",
+        subscription_status: user.subscription?.status || "",
+        billing_cycle: user.subscription?.billingCycle || "",
+        subscription_price: user.subscription?.price ?? "",
+        subscription_end_date: user.subscription?.endDate || "",
+        max_borrowers: user.limits.maxBorrowers ?? "Unlimited",
+        max_loans: user.limits.maxLoans ?? "Unlimited",
+        successful_payments: user.payments.totalCount,
+        lifetime_paid: user.payments.totalAmount,
+        last_paid_at: user.payments.lastPaidAt || "",
+        joined_at: user.joinedAt,
+      })),
+    );
+  };
+
   return (
     <div className="space-y-6">
       <section className="grid gap-6 xl:grid-cols-[0.95fr_1.25fr]">
@@ -188,21 +216,31 @@ export default function AdminUsersPage({
                 {filteredUsers.length} of {users.length} users visible
               </p>
             </div>
-            <div className="inline-flex p-1 rounded-2xl bg-slate-100">
-              {(["all", "active", "suspended"] as const).map((filter) => (
-                <button
-                  key={filter}
-                  type="button"
-                  onClick={() => setStatusFilter(filter)}
-                  className={`rounded-2xl px-3 py-2 text-sm font-medium capitalize transition ${
-                    statusFilter === filter
-                      ? "bg-white text-slate-900 shadow-sm"
-                      : "text-slate-500"
-                  }`}
-                >
-                  {filter}
-                </button>
-              ))}
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <button
+                type="button"
+                onClick={handleExportUsers}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-slate-50"
+              >
+                <Download className="h-4 w-4" />
+                Export
+              </button>
+              <div className="inline-flex p-1 rounded-2xl bg-slate-100">
+                {(["all", "active", "suspended"] as const).map((filter) => (
+                  <button
+                    key={filter}
+                    type="button"
+                    onClick={() => setStatusFilter(filter)}
+                    className={`rounded-2xl px-3 py-2 text-sm font-medium capitalize transition ${
+                      statusFilter === filter
+                        ? "bg-white text-slate-900 shadow-sm"
+                        : "text-slate-500"
+                    }`}
+                  >
+                    {filter}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 

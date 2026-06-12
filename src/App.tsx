@@ -8,7 +8,15 @@ import {
   useNavigate,
   useParams,
 } from "react-router-dom";
-import { supabase, auth, adminApi, db, teamApi } from "./lib/supabase";
+import {
+  supabase,
+  auth,
+  adminApi,
+  adminWorkspaceApi,
+  db,
+  teamApi,
+  workspaceApprovalsApi,
+} from "./lib/supabase";
 import Dashboard from "./components/Dashboard";
 import Borrowers from "./components/Borrowers";
 import Loans from "./components/Loans";
@@ -25,16 +33,20 @@ import AuthPage from "./components/AuthPage";
 import ResetPasswordPage from "./components/ResetPasswordPage";
 import SubscriptionPage from "./components/SubscriptionPage";
 import WorkspaceUsersPage from "./components/WorkspaceUsersPage";
+import WorkspaceApprovalsPage from "./components/WorkspaceApprovalsPage";
 import EmailVerificationNotice from "./components/EmailVerificationNotice";
 import PayPalCheckoutPage from "./components/PayPalCheckoutPage";
 import AdminOverview from "./components/AdminOverview";
 import AdminUsersPage from "./components/AdminUsersPage";
+import AdminWorkspacesPage from "./components/AdminWorkspacesPage";
 import TermsOfServicePage from "./components/TermsOfServicePage";
 import PrivacyPolicyPage from "./components/PrivacyPolicyPage";
 import { useIsMobile } from "./hooks/use-mobile";
 import {
   AdminManagedUser,
   AdminOverviewData,
+  AdminWorkspaceSummary,
+  ApprovalStatus,
   Borrower,
   Loan,
   OrganizationMember,
@@ -42,6 +54,8 @@ import {
   Repayment,
   Subscription,
   UserProfile,
+  WorkspaceApprovalItem,
+  WorkspaceAuditEvent,
 } from "./types";
 import {
   isPaidSubscriptionPlanId,
@@ -69,7 +83,9 @@ const APP_SECTIONS = [
   "settings",
   "admin-overview",
   "admin-users",
+  "admin-workspaces",
   "workspace-users",
+  "workspace-approvals",
 ] as const;
 
 type AppSection = (typeof APP_SECTIONS)[number];
@@ -85,7 +101,9 @@ const SECTION_ROUTES: Record<AppSection, string> = {
   settings: "/settings",
   "admin-overview": "/admin/overview",
   "admin-users": "/admin/users",
+  "admin-workspaces": "/admin/workspaces",
   "workspace-users": "/workspace/users",
+  "workspace-approvals": "/workspace/approvals",
 };
 
 const THEME_STORAGE_KEY = "lendsmart-theme";
@@ -128,11 +146,15 @@ function getSectionFromPathname(pathname: string): AppSection {
   }
 
   if (firstSegment === "admin") {
-    return secondSegment === "users" ? "admin-users" : "admin-overview";
+    if (secondSegment === "users") return "admin-users";
+    if (secondSegment === "workspaces") return "admin-workspaces";
+    return "admin-overview";
   }
 
   if (firstSegment === "workspace") {
-    return "workspace-users";
+    return secondSegment === "approvals"
+      ? "workspace-approvals"
+      : "workspace-users";
   }
 
   if (isAppSection(firstSegment)) {
@@ -192,18 +214,40 @@ function App() {
   const [darkMode, setDarkMode] = useState(getInitialDarkMode);
   const [canResendEmail, setCanResendEmail] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [workspaceApprovals, setWorkspaceApprovals] = useState<
+    WorkspaceApprovalItem[]
+  >([]);
+  const [workspaceAuditEvents, setWorkspaceAuditEvents] = useState<
+    WorkspaceAuditEvent[]
+  >([]);
+  const [workspaceActivityLoading, setWorkspaceActivityLoading] =
+    useState(false);
   const [adminOverview, setAdminOverview] = useState<AdminOverviewData | null>(
     null,
   );
   const [adminUsers, setAdminUsers] = useState<AdminManagedUser[]>([]);
+  const [adminWorkspaces, setAdminWorkspaces] = useState<
+    AdminWorkspaceSummary[]
+  >([]);
   const [adminOverviewLoading, setAdminOverviewLoading] = useState(false);
   const [adminUsersLoading, setAdminUsersLoading] = useState(false);
+  const [adminWorkspacesLoading, setAdminWorkspacesLoading] = useState(false);
   const activeSection = getSectionFromPathname(location.pathname);
   const isAdmin = profile?.role === "admin";
   const activePlan: SubscriptionPlanId =
     subscription?.plan || profile?.plan || "free";
   const canManageTeam =
     workspace?.currentUserRole === "owner" || workspace?.currentUserRole === "admin";
+  const isWorkspaceOwner = workspace?.currentUserRole === "owner";
+  const ownerHasTeamMembers = isWorkspaceOwner && teamMembers.length > 1;
+  const canInitiateBorrowerLoanChanges =
+    Boolean(workspace?.id) && !ownerHasTeamMembers;
+  const approvedBorrowers = borrowers.filter(
+    (borrower) => (borrower.approval_status || "approved") === "approved",
+  );
+  const approvedLoans = loans.filter(
+    (loan) => (loan.approval_status || "approved") === "approved",
+  );
   const showWorkspaceManagement = activePlan !== "free";
   const activeCurrency = normalizeCurrency(
     profile?.currency || DEFAULT_CURRENCY,
@@ -297,6 +341,134 @@ function App() {
     }
   };
 
+  const loadWorkspaceActivity = async (organizationId = workspace?.id) => {
+    if (!organizationId) {
+      setWorkspaceApprovals([]);
+      setWorkspaceAuditEvents([]);
+      return;
+    }
+
+    setWorkspaceActivityLoading(true);
+    try {
+      const [borrowersResult, loansResult, auditResult] = await Promise.all([
+        db.getApprovalBorrowers(organizationId),
+        db.getApprovalLoans(organizationId),
+        db.getAuditEvents(organizationId),
+      ]);
+
+      if (borrowersResult.error) throw borrowersResult.error;
+      if (loansResult.error) throw loansResult.error;
+
+      const approvalRows = [
+        ...((borrowersResult.data || []) as Borrower[]),
+        ...((loansResult.data || []) as Loan[]),
+      ];
+      const auditRows = auditResult.error ? [] : auditResult.data || [];
+      const profileIds = Array.from(
+        new Set(
+          [
+            ...approvalRows.flatMap((item) => [
+              item.initiated_by,
+              item.authorized_by,
+            ]),
+            ...auditRows.flatMap((event: any) => [
+              event.actor_user_id,
+              event.target_user_id,
+            ]),
+          ].filter(Boolean) as string[],
+        ),
+      );
+      const profilesResult = await db.getProfilesByIds(profileIds);
+      const profileById = new Map(
+        ((profilesResult.data || []) as Array<{
+          id: string;
+          email: string | null;
+          full_name: string | null;
+        }>).map((profile) => [profile.id, profile]),
+      );
+      const getUserSummary = (userId?: string | null) => {
+        if (!userId) return null;
+        const member = teamMembers.find((item) => item.user_id === userId);
+        const profile = profileById.get(userId);
+        const email = member?.email || profile?.email || "No email";
+
+        return {
+          id: userId,
+          name:
+            member?.fullName ||
+            profile?.full_name ||
+            email.split("@")[0] ||
+            "Unknown user",
+          email,
+        };
+      };
+
+      const borrowerApprovals: WorkspaceApprovalItem[] = (
+        (borrowersResult.data || []) as Borrower[]
+      ).map((borrower) => ({
+        id: borrower.id,
+        type: "borrower",
+        name: borrower.name,
+        status: borrower.approval_status || "approved",
+        initiatedAt: borrower.initiated_at || borrower.created_at,
+        initiatedBy: getUserSummary(borrower.initiated_by || borrower.user_id),
+        authorizedAt: borrower.authorized_at,
+        authorizedBy: getUserSummary(borrower.authorized_by),
+        rejectionReason: borrower.rejection_reason,
+      }));
+
+      const loanApprovals: WorkspaceApprovalItem[] = (
+        (loansResult.data || []) as Loan[]
+      ).map((loan) => {
+        const loanBorrower = Array.isArray(loan.borrowers)
+          ? loan.borrowers[0]
+          : loan.borrowers;
+
+        return {
+          id: loan.id,
+          type: "loan",
+          name: `Loan ${loan.id.slice(-6)}`,
+          amount: loan.amount,
+          borrowerName: loanBorrower?.name || "Unknown borrower",
+          status: loan.approval_status || "approved",
+          initiatedAt: loan.initiated_at || loan.created_at,
+          initiatedBy: getUserSummary(loan.initiated_by || loan.user_id),
+          authorizedAt: loan.authorized_at,
+          authorizedBy: getUserSummary(loan.authorized_by),
+          rejectionReason: loan.rejection_reason,
+        };
+      });
+
+      setWorkspaceApprovals(
+        [...borrowerApprovals, ...loanApprovals].sort((first, second) => {
+          const firstTime = new Date(first.initiatedAt || "").getTime() || 0;
+          const secondTime = new Date(second.initiatedAt || "").getTime() || 0;
+          return secondTime - firstTime;
+        }),
+      );
+
+      setWorkspaceAuditEvents(
+        auditRows.map((event: any) => ({
+          id: event.id,
+          organization_id: event.organization_id,
+          entityType: event.entity_type,
+          entityId: event.entity_id,
+          action: event.action,
+          details: event.details || {},
+          actor: getUserSummary(event.actor_user_id),
+          target: getUserSummary(event.target_user_id),
+          createdAt: event.created_at,
+        })),
+      );
+    } catch (error) {
+      console.error("Error loading workspace approval activity:", error);
+      setWorkspaceApprovals([]);
+      setWorkspaceAuditEvents([]);
+    } finally {
+      setWorkspaceActivityLoading(false);
+    }
+  };
+
   const loadProfile = async (userId: string) => {
     const { data } = await db.getProfile(userId);
     const normalizedProfile = data
@@ -317,12 +489,15 @@ function App() {
       await Promise.all([
         loadData(nextWorkspace.id),
         loadSubscription(nextWorkspace.id),
+        loadWorkspaceActivity(nextWorkspace.id),
       ]);
     } else {
       setBorrowers([]);
       setLoans([]);
       setRepayments([]);
       setSubscription(null);
+      setWorkspaceApprovals([]);
+      setWorkspaceAuditEvents([]);
     }
   };
 
@@ -432,8 +607,11 @@ function App() {
         setProfile(null);
         setWorkspace(null);
         setTeamMembers([]);
+        setWorkspaceApprovals([]);
+        setWorkspaceAuditEvents([]);
         setAdminOverview(null);
         setAdminUsers([]);
+        setAdminWorkspaces([]);
       }
     });
 
@@ -448,6 +626,7 @@ function App() {
     const refreshUserData = () => {
       void loadData(workspace.id);
       void loadSubscription(workspace.id);
+      void loadWorkspaceActivity(workspace.id);
     };
 
     const borrowersChannel = supabase
@@ -511,6 +690,10 @@ function App() {
     if (location.pathname.startsWith("/admin/users")) {
       void loadAdminUsers();
     }
+
+    if (location.pathname.startsWith("/admin/workspaces")) {
+      void loadAdminWorkspaces();
+    }
   }, [isAdmin, location.pathname, user?.id]);
 
   const handleSignIn = async (email: string, password: string) => {
@@ -552,6 +735,24 @@ function App() {
     }
   };
 
+  const loadAdminWorkspaces = async () => {
+    setAdminWorkspacesLoading(true);
+    try {
+      const { data, error } = await adminWorkspaceApi.list();
+      if (error) throw error;
+      setAdminWorkspaces(data?.workspaces || []);
+    } catch (error) {
+      console.error("Error loading admin workspaces:", error);
+      alert(
+        error instanceof Error
+          ? `Failed to load workspace data: ${error.message}`
+          : "Failed to load workspace data.",
+      );
+    } finally {
+      setAdminWorkspacesLoading(false);
+    }
+  };
+
   const handlePasswordReset = async (email: string) => {
     try {
       const { data, error } = await auth.requestPasswordReset(email);
@@ -588,14 +789,25 @@ function App() {
     setProfile(null);
     setWorkspace(null);
     setTeamMembers([]);
+    setWorkspaceApprovals([]);
+    setWorkspaceAuditEvents([]);
     setAdminOverview(null);
     setAdminUsers([]);
+    setAdminWorkspaces([]);
     setShowEmailVerification(false);
     navigate("/dashboard", { replace: true });
   };
 
   const handleAddBorrower = async (borrower: Omit<Borrower, "id">) => {
     if (!user || !workspace?.id) return;
+    if (!canInitiateBorrowerLoanChanges) {
+      alert(
+        "Workspace owners review member changes. Ask a member to initiate the borrower, then approve it from Workspace Approvals.",
+      );
+      setShowAddBorrower(false);
+      return;
+    }
+
     const planLimitViolation = getPlanLimitViolation(
       activePlan,
       borrowers.length + 1,
@@ -608,18 +820,38 @@ function App() {
     }
 
     try {
+      const nowIso = new Date().toISOString();
+      const approvalStatus: ApprovalStatus =
+        isWorkspaceOwner && teamMembers.length <= 1 ? "approved" : "pending";
       const { data, error } = await db.addBorrower(user.id, workspace.id, {
         name: borrower.name,
         email: borrower.email,
         phone: borrower.phone,
         address: borrower.address,
         notes: borrower.notes,
+        approval_status: approvalStatus,
+        initiated_by: user.id,
+        initiated_at: nowIso,
+        authorized_by: approvalStatus === "approved" ? user.id : null,
+        authorized_at: approvalStatus === "approved" ? nowIso : null,
       });
       if (error) throw error;
       if (data) {
         setBorrowers((prev) => [normalizeBorrower(data), ...prev]);
+        try {
+          await workspaceApprovalsApi.recordInitiated("borrower", data.id, {
+            name: borrower.name,
+            approvalStatus,
+          });
+        } catch (auditError) {
+          console.warn("Unable to record borrower initiation audit:", auditError);
+        }
+        await loadWorkspaceActivity(workspace.id);
       }
       setShowAddBorrower(false);
+      if (approvalStatus === "pending") {
+        alert("Borrower initiated and sent to the workspace owner for approval.");
+      }
     } catch (error) {
       console.error("Error adding borrower:", error);
       alert("Failed to add borrower");
@@ -628,6 +860,14 @@ function App() {
 
   const handleAddLoan = async (loan: Omit<Loan, "id">) => {
     if (!user || !workspace?.id) return;
+    if (!canInitiateBorrowerLoanChanges) {
+      alert(
+        "Workspace owners review member changes. Ask a member to initiate the loan, then approve it from Workspace Approvals.",
+      );
+      setShowAddLoan(false);
+      return;
+    }
+
     const planLimitViolation = getPlanLimitViolation(
       activePlan,
       borrowers.length,
@@ -640,6 +880,9 @@ function App() {
     }
 
     try {
+      const nowIso = new Date().toISOString();
+      const approvalStatus: ApprovalStatus =
+        isWorkspaceOwner && teamMembers.length <= 1 ? "approved" : "pending";
       const { data, error } = await db.addLoan(user.id, workspace.id, {
         borrower_id: loan.borrowerId,
         amount: loan.amount,
@@ -649,16 +892,34 @@ function App() {
         due_date: loan.dueDate,
         status: "active",
         notes: loan.notes,
+        approval_status: approvalStatus,
+        initiated_by: user.id,
+        initiated_at: nowIso,
+        authorized_by: approvalStatus === "approved" ? user.id : null,
+        authorized_at: approvalStatus === "approved" ? nowIso : null,
       });
       if (error) throw error;
       if (data) {
-        const borrower = borrowers.find((b) => b.id === loan.borrowerId);
+        const borrower = approvedBorrowers.find((b) => b.id === loan.borrowerId);
         setLoans((prev) => [
           normalizeLoan({ ...data, borrowers: borrower }),
           ...prev,
         ]);
+        try {
+          await workspaceApprovalsApi.recordInitiated("loan", data.id, {
+            borrowerId: loan.borrowerId,
+            amount: loan.amount,
+            approvalStatus,
+          });
+        } catch (auditError) {
+          console.warn("Unable to record loan initiation audit:", auditError);
+        }
+        await loadWorkspaceActivity(workspace.id);
       }
       setShowAddLoan(false);
+      if (approvalStatus === "pending") {
+        alert("Loan initiated and sent to the workspace owner for approval.");
+      }
     } catch (error) {
       console.error("Error adding loan:", error);
       alert("Failed to add loan");
@@ -897,7 +1158,102 @@ function App() {
     await loadWorkspace();
   };
 
+  const handleReviewWorkspaceApproval = async (
+    entityType: "borrower" | "loan",
+    entityId: string,
+    nextStatus: Exclude<ApprovalStatus, "pending">,
+    reason?: string,
+  ) => {
+    const { error } = await workspaceApprovalsApi.review(
+      entityType,
+      entityId,
+      nextStatus,
+      reason,
+    );
+    if (error) {
+      const reviewedAt = new Date().toISOString();
+      const updatePayload = {
+        approval_status: nextStatus,
+        authorized_by: user?.id,
+        authorized_at: reviewedAt,
+        rejection_reason:
+          nextStatus === "rejected"
+            ? reason || "Rejected by workspace owner."
+            : null,
+      };
+      const fallbackResult =
+        entityType === "borrower"
+          ? await db.updateBorrower(entityId, updatePayload)
+          : await db.updateLoan(entityId, updatePayload);
+
+      if (fallbackResult.error) {
+        throw fallbackResult.error;
+      }
+    }
+
+    if (workspace?.id) {
+      await Promise.all([
+        loadData(workspace.id),
+        loadWorkspaceActivity(workspace.id),
+      ]);
+    } else {
+      await loadWorkspaceActivity();
+    }
+  };
+
+  const handleAdminAddWorkspaceMember = async (
+    organizationId: string,
+    email: string,
+  ) => {
+    const { data, error } = await adminWorkspaceApi.addMember(
+      organizationId,
+      email,
+    );
+    if (error) throw error;
+    setAdminWorkspaces(
+      (data?.workspaces as AdminWorkspaceSummary[] | undefined) || [],
+    );
+  };
+
+  const handleAdminRemoveWorkspaceMember = async (
+    organizationId: string,
+    memberId: string,
+  ) => {
+    const { data, error } = await adminWorkspaceApi.removeMember(
+      organizationId,
+      memberId,
+    );
+    if (error) throw error;
+    setAdminWorkspaces(
+      (data?.workspaces as AdminWorkspaceSummary[] | undefined) || [],
+    );
+  };
+
+  const handleAdminWorkspaceRoleChange = async (
+    organizationId: string,
+    memberId: string,
+    role: OrganizationMember["role"],
+  ) => {
+    const { data, error } = await adminWorkspaceApi.changeRole(
+      organizationId,
+      memberId,
+      role,
+    );
+    if (error) throw error;
+    setAdminWorkspaces(
+      (data?.workspaces as AdminWorkspaceSummary[] | undefined) || [],
+    );
+  };
+
   const handleOpenAddBorrower = () => {
+    if (!canInitiateBorrowerLoanChanges) {
+      alert(
+        "Workspace owners with team members approve changes instead of initiating them. Use Workspace Approvals to review member requests.",
+      );
+      navigate("/workspace/approvals");
+      return;
+    }
+
     const planLimitViolation = getPlanLimitViolation(
       activePlan,
       borrowers.length + 1,
@@ -913,6 +1269,14 @@ function App() {
   };
 
   const handleOpenAddLoan = () => {
+    if (!canInitiateBorrowerLoanChanges) {
+      alert(
+        "Workspace owners with team members approve changes instead of initiating them. Use Workspace Approvals to review member requests.",
+      );
+      navigate("/workspace/approvals");
+      return;
+    }
+
     const planLimitViolation = getPlanLimitViolation(
       activePlan,
       borrowers.length,
@@ -1122,9 +1486,9 @@ function App() {
               path="/dashboard"
               element={
                 <Dashboard
-                  borrowers={borrowers}
+                  borrowers={approvedBorrowers}
                   currency={activeCurrency}
-                  loans={loans}
+                  loans={approvedLoans}
                   repayments={repayments}
                 />
               }
@@ -1134,7 +1498,7 @@ function App() {
               element={
                 <Borrowers
                   borrowers={borrowers}
-                  loans={loans}
+                  loans={approvedLoans}
                   repayments={repayments}
                   currency={activeCurrency}
                   onAdd={handleOpenAddBorrower}
@@ -1148,7 +1512,7 @@ function App() {
               element={
                 <Loans
                   loans={loans}
-                  borrowers={borrowers}
+                  borrowers={approvedBorrowers}
                   currency={activeCurrency}
                   repayments={repayments}
                   onAdd={handleOpenAddLoan}
@@ -1162,8 +1526,10 @@ function App() {
               element={
                 <Repayments
                   repayments={repayments}
-                  loans={loans}
-                  borrowers={borrowers}
+                  loans={approvedLoans.filter(
+                    (loan) => loan.status === "active",
+                  )}
+                  borrowers={approvedBorrowers}
                   currency={activeCurrency}
                   onAdd={() => setShowAddRepayment(true)}
                 />
@@ -1173,8 +1539,8 @@ function App() {
               path="/reports"
               element={
                 <Reports
-                  borrowers={borrowers}
-                  loans={loans}
+                  borrowers={approvedBorrowers}
+                  loans={approvedLoans}
                   repayments={repayments}
                   currency={activeCurrency}
                 />
@@ -1238,6 +1604,24 @@ function App() {
               }
             />
             <Route
+              path="/workspace/approvals"
+              element={
+                showWorkspaceManagement ? (
+                  <WorkspaceApprovalsPage
+                    approvals={workspaceApprovals}
+                    auditEvents={workspaceAuditEvents}
+                    loading={workspaceActivityLoading}
+                    currentUserRole={workspace?.currentUserRole}
+                    currency={activeCurrency}
+                    onRefresh={() => void loadWorkspaceActivity()}
+                    onReview={handleReviewWorkspaceApproval}
+                  />
+                ) : (
+                  <Navigate to="/subscription" replace />
+                )
+              }
+            />
+            <Route
               path="/admin/overview"
               element={
                 isAdmin ? (
@@ -1260,6 +1644,23 @@ function App() {
                     loading={adminUsersLoading}
                     onRefresh={() => void loadAdminUsers()}
                     onUpdateUser={handleAdminUserUpdate}
+                  />
+                ) : (
+                  <Navigate to="/dashboard" replace />
+                )
+              }
+            />
+            <Route
+              path="/admin/workspaces"
+              element={
+                isAdmin ? (
+                  <AdminWorkspacesPage
+                    workspaces={adminWorkspaces}
+                    loading={adminWorkspacesLoading}
+                    onRefresh={() => void loadAdminWorkspaces()}
+                    onAddMember={handleAdminAddWorkspaceMember}
+                    onRemoveMember={handleAdminRemoveWorkspaceMember}
+                    onChangeRole={handleAdminWorkspaceRoleChange}
                   />
                 ) : (
                   <Navigate to="/dashboard" replace />
@@ -1289,7 +1690,7 @@ function App() {
 
       {showAddLoan && (
         <AddLoanModal
-          borrowers={borrowers}
+          borrowers={approvedBorrowers}
           currency={activeCurrency}
           onClose={() => setShowAddLoan(false)}
           onAdd={handleAddLoan}
@@ -1298,8 +1699,8 @@ function App() {
 
       {showAddRepayment && (
         <AddRepaymentModal
-          loans={loans.filter((loan) => loan.status === "active")}
-          borrowers={borrowers}
+          loans={approvedLoans.filter((loan) => loan.status === "active")}
+          borrowers={approvedBorrowers}
           currency={activeCurrency}
           onClose={() => setShowAddRepayment(false)}
           onAdd={handleAddRepayment}
