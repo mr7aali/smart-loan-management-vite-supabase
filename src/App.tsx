@@ -22,6 +22,7 @@ import AddBorrowerModal from "./components/AddBorrowerModal";
 import AddLoanModal from "./components/AddLoanModal";
 import AddRepaymentModal from "./components/AddRepaymentModal";
 import AuthPage from "./components/AuthPage";
+import ResetPasswordPage from "./components/ResetPasswordPage";
 import SubscriptionPage from "./components/SubscriptionPage";
 import WorkspaceUsersPage from "./components/WorkspaceUsersPage";
 import EmailVerificationNotice from "./components/EmailVerificationNotice";
@@ -551,6 +552,32 @@ function App() {
     }
   };
 
+  const handlePasswordReset = async (email: string) => {
+    try {
+      const { data, error } = await auth.requestPasswordReset(email);
+
+      if (
+        error?.message?.includes("rate") ||
+        error?.message?.includes("429") ||
+        error?.message?.includes("try again later")
+      ) {
+        throw new Error("Too many requests. Please wait a few minutes and try again.");
+      }
+
+      if (error) throw error;
+      return data;
+    } catch (error: any) {
+      console.error("Password reset error:", error);
+      throw error;
+    }
+  };
+
+  const handleUpdatePassword = async (password: string) => {
+    const { data, error } = await auth.updatePassword(password);
+    if (error) throw error;
+    return data;
+  };
+
   const handleSignOut = async () => {
     await auth.signOut();
     setUser(null);
@@ -1035,14 +1062,28 @@ function App() {
     );
   }
 
+  if (location.pathname === "/reset-password") {
+    return <ResetPasswordPage onUpdatePassword={handleUpdatePassword} />;
+  }
+
   if (!user) {
     return (
       <Routes>
         <Route path="/terms" element={<TermsOfServicePage />} />
         <Route path="/privacy" element={<PrivacyPolicyPage />} />
         <Route
+          path="/reset-password"
+          element={<ResetPasswordPage onUpdatePassword={handleUpdatePassword} />}
+        />
+        <Route
           path="*"
-          element={<AuthPage onSignIn={handleSignIn} onSignUp={handleSignUp} />}
+          element={
+            <AuthPage
+              onSignIn={handleSignIn}
+              onSignUp={handleSignUp}
+              onPasswordReset={handlePasswordReset}
+            />
+          }
         />
       </Routes>
     );
