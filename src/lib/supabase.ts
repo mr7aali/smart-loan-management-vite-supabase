@@ -57,6 +57,14 @@ function isMissingApprovalColumnError(error: unknown) {
   );
 }
 
+function isMissingColumnError(error: unknown, column: string) {
+  const maybeError = error as { code?: string; message?: string } | null;
+  return (
+    (maybeError?.code === '42703' || maybeError?.code === 'PGRST204') &&
+    Boolean(maybeError?.message?.includes(column))
+  );
+}
+
 // Auth helpers
 export const auth = {
   async signUp(email: string, password: string, name: string) {
@@ -243,19 +251,39 @@ export const db = {
   },
 
   async getApprovalBorrowers(organizationId: string) {
-    return supabase
+    const result = await supabase
       .from('borrowers')
       .select('*')
       .eq('organization_id', organizationId)
       .order('initiated_at', { ascending: false });
+
+    if (!isMissingColumnError(result.error, 'initiated_at')) {
+      return result;
+    }
+
+    return supabase
+      .from('borrowers')
+      .select('*')
+      .eq('organization_id', organizationId)
+      .order('created_at', { ascending: false });
   },
 
   async getApprovalLoans(organizationId: string) {
-    return supabase
+    const result = await supabase
       .from('loans')
       .select('*, borrowers(name)')
       .eq('organization_id', organizationId)
       .order('initiated_at', { ascending: false });
+
+    if (!isMissingColumnError(result.error, 'initiated_at')) {
+      return result;
+    }
+
+    return supabase
+      .from('loans')
+      .select('*, borrowers(name)')
+      .eq('organization_id', organizationId)
+      .order('created_at', { ascending: false });
   },
 
   async getAuditEvents(organizationId: string) {

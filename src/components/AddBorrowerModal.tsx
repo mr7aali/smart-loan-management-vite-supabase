@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Borrower } from '../types';
 import { X, User, Mail, Phone, MapPin, FileText } from 'lucide-react';
 
 interface AddBorrowerModalProps {
   onClose: () => void;
-  onAdd: (borrower: Omit<Borrower, 'id' | 'createdAt'>) => void;
+  onAdd: (borrower: Omit<Borrower, 'id' | 'createdAt'>) => void | Promise<void>;
 }
 
 export default function AddBorrowerModal({ onClose, onAdd }: AddBorrowerModalProps) {
@@ -16,6 +16,8 @@ export default function AddBorrowerModal({ onClose, onAdd }: AddBorrowerModalPro
     notes: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -34,16 +36,25 @@ export default function AddBorrowerModal({ onClose, onAdd }: AddBorrowerModalPro
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (validate()) {
-      onAdd({
+    if (savingRef.current || saving || !validate()) {
+      return;
+    }
+
+    savingRef.current = true;
+    setSaving(true);
+    try {
+      await onAdd({
         name: formData.name,
         email: formData.email,
         phone: formData.phone,
         address: formData.address,
         notes: formData.notes || undefined,
       });
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
     }
   };
 
@@ -67,7 +78,9 @@ export default function AddBorrowerModal({ onClose, onAdd }: AddBorrowerModalPro
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            disabled={saving}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:cursor-wait disabled:opacity-60"
+            type="button"
           >
             <X className="w-5 h-5 text-gray-500" />
           </button>
@@ -167,15 +180,17 @@ export default function AddBorrowerModal({ onClose, onAdd }: AddBorrowerModalPro
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              disabled={saving}
+              className="min-h-11 flex-1 touch-manipulation rounded-lg border border-gray-200 px-4 py-2 text-gray-700 transition-colors hover:bg-gray-50 active:bg-gray-100 disabled:cursor-wait disabled:opacity-60"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+              disabled={saving}
+              className="min-h-11 flex-1 touch-manipulation rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white transition-colors hover:bg-indigo-700 active:bg-indigo-800 disabled:cursor-wait disabled:opacity-60"
             >
-              Add Borrower
+              {saving ? "Saving..." : "Add Borrower"}
             </button>
           </div>
         </form>

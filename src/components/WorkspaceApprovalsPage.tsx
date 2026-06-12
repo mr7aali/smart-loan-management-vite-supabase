@@ -64,7 +64,8 @@ export default function WorkspaceApprovalsPage({
   onRefresh,
   onReview,
 }: WorkspaceApprovalsPageProps) {
-  const [reviewingId, setReviewingId] = useState<string | null>(null);
+  const [reviewingKey, setReviewingKey] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const canReview = currentUserRole === "owner";
   const pendingApprovals = approvals.filter(
     (approval) => approval.status === "pending",
@@ -98,11 +99,19 @@ export default function WorkspaceApprovalsPage({
       return;
     }
 
-    setReviewingId(approval.id);
+    const nextReviewingKey = `${approval.type}-${approval.id}`;
+    setReviewingKey(nextReviewingKey);
+    setActionError(null);
     try {
       await onReview(approval.type, approval.id, status, reason);
+    } catch (error) {
+      setActionError(
+        error instanceof Error
+          ? error.message
+          : "Unable to update this approval. Please try again.",
+      );
     } finally {
-      setReviewingId(null);
+      setReviewingKey(null);
     }
   };
 
@@ -192,21 +201,23 @@ export default function WorkspaceApprovalsPage({
         </div>
 
         {approval.status === "pending" && canReview && (
-          <div className="flex shrink-0 gap-2">
+          <div className="grid shrink-0 grid-cols-1 gap-2 sm:grid-cols-2 lg:flex">
             <button
               type="button"
               onClick={() => void handleReview(approval, "approved")}
-              disabled={reviewingId === approval.id}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+              disabled={reviewingKey === `${approval.type}-${approval.id}`}
+              className="inline-flex min-h-11 touch-manipulation items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 active:bg-emerald-800 disabled:cursor-wait disabled:opacity-60"
             >
               <CheckCircle2 className="h-4 w-4" />
-              Approve
+              {reviewingKey === `${approval.type}-${approval.id}`
+                ? "Saving..."
+                : "Approve"}
             </button>
             <button
               type="button"
               onClick={() => void handleReview(approval, "rejected")}
-              disabled={reviewingId === approval.id}
-              className="inline-flex items-center justify-center gap-2 rounded-lg border border-rose-100 px-3 py-2 text-sm font-semibold text-rose-600 hover:bg-rose-50 disabled:opacity-60"
+              disabled={reviewingKey === `${approval.type}-${approval.id}`}
+              className="inline-flex min-h-11 touch-manipulation items-center justify-center gap-2 rounded-lg border border-rose-100 px-4 py-2 text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-50 active:bg-rose-100 disabled:cursor-wait disabled:opacity-60"
             >
               <XCircle className="h-4 w-4" />
               Reject
@@ -288,6 +299,11 @@ export default function WorkspaceApprovalsPage({
 
       <section className="space-y-3">
         <h3 className="text-lg font-bold text-gray-800">Pending Review</h3>
+        {actionError && (
+          <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+            {actionError}
+          </div>
+        )}
         {loading ? (
           <div className="rounded-xl border border-gray-100 bg-white p-8 text-center text-sm text-gray-500">
             Loading approvals...

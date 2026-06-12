@@ -201,6 +201,7 @@ function App() {
   const [showAddBorrower, setShowAddBorrower] = useState(false);
   const [showAddLoan, setShowAddLoan] = useState(false);
   const [showAddRepayment, setShowAddRepayment] = useState(false);
+  const [addingBorrower, setAddingBorrower] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [workspace, setWorkspace] = useState<OrganizationWorkspace | null>(
@@ -800,26 +801,29 @@ function App() {
 
   const handleAddBorrower = async (borrower: Omit<Borrower, "id">) => {
     if (!user || !workspace?.id) return;
-    if (!canInitiateBorrowerLoanChanges) {
-      alert(
-        "Workspace owners review member changes. Ask a member to initiate the borrower, then approve it from Workspace Approvals.",
-      );
-      setShowAddBorrower(false);
-      return;
-    }
+    if (addingBorrower) return;
 
-    const planLimitViolation = getPlanLimitViolation(
-      activePlan,
-      borrowers.length + 1,
-      loans.length,
-    );
-
-    if (planLimitViolation) {
-      showPlanLimitAlert(planLimitViolation);
-      return;
-    }
-
+    setAddingBorrower(true);
     try {
+      if (!canInitiateBorrowerLoanChanges) {
+        alert(
+          "Workspace owners review member changes. Ask a member to initiate the borrower, then approve it from Workspace Approvals.",
+        );
+        setShowAddBorrower(false);
+        return;
+      }
+
+      const planLimitViolation = getPlanLimitViolation(
+        activePlan,
+        borrowers.length + 1,
+        loans.length,
+      );
+
+      if (planLimitViolation) {
+        showPlanLimitAlert(planLimitViolation);
+        return;
+      }
+
       const nowIso = new Date().toISOString();
       const approvalStatus: ApprovalStatus =
         isWorkspaceOwner && teamMembers.length <= 1 ? "approved" : "pending";
@@ -855,6 +859,8 @@ function App() {
     } catch (error) {
       console.error("Error adding borrower:", error);
       alert("Failed to add borrower");
+    } finally {
+      setAddingBorrower(false);
     }
   };
 
@@ -1164,30 +1170,47 @@ function App() {
     nextStatus: Exclude<ApprovalStatus, "pending">,
     reason?: string,
   ) => {
-    const { error } = await workspaceApprovalsApi.review(
-      entityType,
-      entityId,
-      nextStatus,
-      reason,
-    );
-    if (error) {
-      const reviewedAt = new Date().toISOString();
-      const updatePayload = {
-        approval_status: nextStatus,
-        authorized_by: user?.id,
-        authorized_at: reviewedAt,
-        rejection_reason:
-          nextStatus === "rejected"
-            ? reason || "Rejected by workspace owner."
-            : null,
-      };
-      const fallbackResult =
-        entityType === "borrower"
-          ? await db.updateBorrower(entityId, updatePayload)
-          : await db.updateLoan(entityId, updatePayload);
+    const reviewedAt = new Date().toISOString();
+    const fullUpdatePayload = {
+      approval_status: nextStatus,
+      authorized_by: user?.id,
+      authorized_at: reviewedAt,
+      rejection_reason:
+        nextStatus === "rejected"
+          ? reason || "Rejected by workspace owner."
+          : null,
+    };
+    const runDirectUpdate = (payload: Record<string, unknown>) =>
+      entityType === "borrower"
+        ? db.updateBorrower(entityId, payload)
+        : db.updateLoan(entityId, payload);
 
-      if (fallbackResult.error) {
-        throw fallbackResult.error;
+    let directResult = await runDirectUpdate(fullUpdatePayload);
+
+    if (directResult.error) {
+      const message = directResult.error.message || "";
+      const columnMissing =
+        directResult.error.code === "42703" ||
+        directResult.error.code === "PGRST204" ||
+        message.includes("authorized_by") ||
+        message.includes("authorized_at") ||
+        message.includes("rejection_reason");
+
+      if (!columnMissing) {
+        const functionResult = await workspaceApprovalsApi.review(
+          entityType,
+          entityId,
+          nextStatus,
+          reason,
+        );
+        if (functionResult.error) {
+          throw directResult.error;
+        }
+      } else {
+        directResult = await runDirectUpdate({ approval_status: nextStatus });
+        if (directResult.error) {
+          throw directResult.error;
+        }
       }
     }
 
