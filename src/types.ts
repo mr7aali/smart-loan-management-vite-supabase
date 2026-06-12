@@ -7,9 +7,17 @@ export interface Borrower {
   phone: string;
   address?: string;
   notes?: string;
+  approval_status?: ApprovalStatus;
+  initiated_by?: string | null;
+  initiated_at?: string | null;
+  authorized_by?: string | null;
+  authorized_at?: string | null;
+  rejection_reason?: string | null;
   created_at?: string;
   createdAt?: string;
 }
+
+export type ApprovalStatus = "pending" | "approved" | "rejected";
 
 export interface Loan {
   id: string;
@@ -28,6 +36,12 @@ export interface Loan {
   dueDate?: string;
   status: 'active' | 'paid' | 'overdue';
   notes?: string;
+  approval_status?: ApprovalStatus;
+  initiated_by?: string | null;
+  initiated_at?: string | null;
+  authorized_by?: string | null;
+  authorized_at?: string | null;
+  rejection_reason?: string | null;
   created_at?: string;
   createdAt?: string;
   borrowers?: Borrower;
@@ -109,6 +123,52 @@ export interface OrganizationMember {
   fullName?: string | null;
   joined_at?: string | null;
   created_at?: string;
+}
+
+export interface AuditUserSummary {
+  id: string | null;
+  name: string;
+  email: string;
+}
+
+export interface WorkspaceAuditEvent {
+  id: string;
+  organization_id?: string | null;
+  entityType: "borrower" | "loan" | "workspace" | "member" | "user";
+  entityId?: string | null;
+  action: string;
+  details: Record<string, unknown>;
+  actor: AuditUserSummary | null;
+  target: AuditUserSummary | null;
+  createdAt: string;
+}
+
+export interface WorkspaceApprovalItem {
+  id: string;
+  type: "borrower" | "loan";
+  name: string;
+  amount?: number;
+  borrowerName?: string;
+  status: ApprovalStatus;
+  initiatedAt?: string | null;
+  initiatedBy: AuditUserSummary | null;
+  authorizedAt?: string | null;
+  authorizedBy?: AuditUserSummary | null;
+  rejectionReason?: string | null;
+}
+
+export interface AdminWorkspaceSummary {
+  id: string;
+  name: string;
+  ownerId: string;
+  ownerName: string;
+  ownerEmail: string;
+  memberCount: number;
+  borrowerCount: number;
+  loanCount: number;
+  pendingApprovals: number;
+  createdAt?: string | null;
+  members: OrganizationMember[];
 }
 
 export interface PaymentRecord {

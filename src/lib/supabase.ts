@@ -1,4 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
+import {
+  ApprovalStatus,
+  AdminWorkspaceSummary,
+} from '../types';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -43,6 +47,14 @@ async function invokeFunction<TBody extends Record<string, unknown>>(
     data,
     error: error ? await normalizeFunctionError(error) : null,
   };
+}
+
+function isMissingApprovalColumnError(error: unknown) {
+  const maybeError = error as { code?: string; message?: string } | null;
+  return (
+    (maybeError?.code === '42703' || maybeError?.code === 'PGRST204') &&
+    Boolean(maybeError?.message?.includes('approval_status'))
+  );
 }
 
 // Auth helpers
@@ -166,12 +178,22 @@ export const db = {
 
   // Borrowers
   async getBorrowers(organizationId: string) {
-    const { data, error } = await supabase
+    const result = await supabase
+      .from('borrowers')
+      .select('*')
+      .eq('organization_id', organizationId)
+      .neq('approval_status', 'rejected')
+      .order('created_at', { ascending: false });
+
+    if (!isMissingApprovalColumnError(result.error)) {
+      return result;
+    }
+
+    return supabase
       .from('borrowers')
       .select('*')
       .eq('organization_id', organizationId)
       .order('created_at', { ascending: false });
-    return { data, error };
   },
 
   async addBorrower(userId: string, organizationId: string, borrower: any) {
@@ -202,12 +224,58 @@ export const db = {
 
   // Loans
   async getLoans(organizationId: string) {
-    const { data, error } = await supabase
+    const result = await supabase
+      .from('loans')
+      .select('*, borrowers(*)')
+      .eq('organization_id', organizationId)
+      .neq('approval_status', 'rejected')
+      .order('created_at', { ascending: false });
+
+    if (!isMissingApprovalColumnError(result.error)) {
+      return result;
+    }
+
+    return supabase
       .from('loans')
       .select('*, borrowers(*)')
       .eq('organization_id', organizationId)
       .order('created_at', { ascending: false });
-    return { data, error };
+  },
+
+  async getApprovalBorrowers(organizationId: string) {
+    return supabase
+      .from('borrowers')
+      .select('*')
+      .eq('organization_id', organizationId)
+      .order('initiated_at', { ascending: false });
+  },
+
+  async getApprovalLoans(organizationId: string) {
+    return supabase
+      .from('loans')
+      .select('*, borrowers(name)')
+      .eq('organization_id', organizationId)
+      .order('initiated_at', { ascending: false });
+  },
+
+  async getAuditEvents(organizationId: string) {
+    return supabase
+      .from('audit_events')
+      .select('*')
+      .eq('organization_id', organizationId)
+      .order('created_at', { ascending: false })
+      .limit(100);
+  },
+
+  async getProfilesByIds(userIds: string[]) {
+    if (userIds.length === 0) {
+      return { data: [], error: null };
+    }
+
+    return supabase
+      .from('profiles')
+      .select('id, email, full_name')
+      .in('id', Array.from(new Set(userIds)));
   },
 
   async addLoan(userId: string, organizationId: string, loan: any) {
@@ -299,6 +367,49 @@ export const teamApi = {
   },
 };
 
+export const workspaceApprovalsApi = {
+  async list() {
+    return invokeFunction('workspace-approvals', {
+      action: 'list',
+    });
+  },
+
+  async recordInitiated(
+    entityType: 'borrower' | 'loan',
+    entityId: string,
+    details?: Record<string, unknown>,
+  ) {
+    return invokeFunction('workspace-approvals', {
+      action: 'recordInitiated',
+      entityType,
+      entityId,
+      details: details || {},
+    });
+  },
+
+  async review(
+    entityType: 'borrower' | 'loan',
+    entityId: string,
+    nextStatus: Exclude<ApprovalStatus, 'pending'>,
+    reason?: string,
+  ) {
+    const action =
+      entityType === 'borrower'
+        ? nextStatus === 'approved'
+          ? 'approveBorrower'
+          : 'rejectBorrower'
+        : nextStatus === 'approved'
+          ? 'approveLoan'
+          : 'rejectLoan';
+
+    return invokeFunction('workspace-approvals', {
+      action,
+      entityId,
+      reason,
+    });
+  },
+};
+
 export const adminApi = {
   async getOverview() {
     const { data, error } = await supabase.functions.invoke(
@@ -332,6 +443,50 @@ export const adminApi = {
       },
     );
     return { data, error };
+  },
+};
+
+export const adminWorkspaceApi = {
+  async list() {
+    const { data, error } = await invokeFunction<{
+      action: 'list';
+    }>('admin-workspaces', { action: 'list' });
+    return {
+      data: data as
+        | { workspaces: AdminWorkspaceSummary[] }
+        | null
+        | undefined,
+      error,
+    };
+  },
+
+  async addMember(organizationId: string, email: string) {
+    return invokeFunction('admin-workspaces', {
+      action: 'addMember',
+      organizationId,
+      email,
+    });
+  },
+
+  async removeMember(organizationId: string, memberId: string) {
+    return invokeFunction('admin-workspaces', {
+      action: 'removeMember',
+      organizationId,
+      memberId,
+    });
+  },
+
+  async changeRole(
+    organizationId: string,
+    memberId: string,
+    role: 'owner' | 'admin' | 'member',
+  ) {
+    return invokeFunction('admin-workspaces', {
+      action: 'changeRole',
+      organizationId,
+      memberId,
+      role,
+    });
   },
 };
 

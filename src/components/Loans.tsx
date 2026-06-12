@@ -100,14 +100,20 @@ export default function Loans({ loans, borrowers, currency, repayments, onAdd, o
                       <div className="min-w-0">
                         <p className="truncate font-semibold text-gray-800">{borrower?.name || 'Unknown'}</p>
                         <p className="text-xs text-gray-500">Loan ID: {loan.id.slice(-6)}</p>
+                        {loan.approval_status === 'pending' && (
+                          <p className="mt-1 text-xs font-semibold text-amber-700">
+                            Awaiting owner approval
+                          </p>
+                        )}
                       </div>
                     </div>
                     <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium ${
+                      loan.approval_status === 'pending' ? 'bg-amber-100 text-amber-700' :
                       loan.status === 'paid' ? 'bg-emerald-100 text-emerald-700' :
                       isOverdue ? 'bg-red-100 text-red-700' :
                       'bg-indigo-100 text-indigo-700'
                     }`}>
-                      {loan.status === 'paid' ? 'Paid' : isOverdue ? 'Overdue' : 'Active'}
+                      {loan.approval_status === 'pending' ? 'Pending' : loan.status === 'paid' ? 'Paid' : isOverdue ? 'Overdue' : 'Active'}
                     </span>
                   </div>
 
@@ -207,6 +213,11 @@ export default function Loans({ loans, borrowers, currency, repayments, onAdd, o
                           <div>
                             <p className="font-medium text-gray-800">{borrower?.name || 'Unknown'}</p>
                             <p className="text-xs text-gray-500">ID: {loan.id.slice(-6)}</p>
+                            {loan.approval_status === 'pending' && (
+                              <p className="mt-1 text-xs font-semibold text-amber-700">
+                                Pending approval
+                              </p>
+                            )}
                           </div>
                         </div>
                       </td>
@@ -246,11 +257,12 @@ export default function Loans({ loans, borrowers, currency, repayments, onAdd, o
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                          loan.approval_status === 'pending' ? 'bg-amber-100 text-amber-700' :
                           loan.status === 'paid' ? 'bg-emerald-100 text-emerald-700' :
                           isOverdue ? 'bg-red-100 text-red-700' :
                           'bg-indigo-100 text-indigo-700'
                         }`}>
-                          {loan.status === 'paid' ? 'Paid' : isOverdue ? 'Overdue' : 'Active'}
+                          {loan.approval_status === 'pending' ? 'Pending' : loan.status === 'paid' ? 'Paid' : isOverdue ? 'Overdue' : 'Active'}
                         </span>
                       </td>
                       <td className="px-6 py-4">

@@ -126,9 +126,17 @@ export default function Borrowers({
                         <h3 className="truncate font-semibold text-gray-800">
                           {borrower.name}
                         </h3>
-                        <p className="text-sm text-gray-500">
-                          ID: {borrower.id.slice(-6)}
-                        </p>
+                        <div className="mt-1 flex flex-wrap items-center gap-2">
+                          <p className="text-sm text-gray-500">
+                            ID: {borrower.id.slice(-6)}
+                          </p>
+                          {(borrower.approval_status || "approved") !==
+                            "approved" && (
+                            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold uppercase text-amber-700">
+                              {borrower.approval_status}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <div className="flex gap-2">
