@@ -4,7 +4,6 @@ export default function PrivacyPolicyPage() {
   return (
     <LegalPageLayout
       title="Privacy Policy"
-      pageTitle="Privacy Policy - LendSmart"
       lastUpdated="January 1, 2025"
     >
       <div className="rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50 to-green-50 p-5 text-emerald-900">

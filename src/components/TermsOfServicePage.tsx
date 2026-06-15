@@ -4,7 +4,6 @@ export default function TermsOfServicePage() {
   return (
     <LegalPageLayout
       title="Terms and Conditions"
-      pageTitle="Terms of Service - LendSmart"
       lastUpdated="January 1, 2025"
     >
       <div className="p-5 text-indigo-900 border border-indigo-200 rounded-2xl bg-gradient-to-r from-indigo-50 to-violet-50">
