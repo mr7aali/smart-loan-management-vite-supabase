@@ -41,7 +41,9 @@ import AdminUsersPage from "./components/AdminUsersPage";
 import AdminWorkspacesPage from "./components/AdminWorkspacesPage";
 import TermsOfServicePage from "./components/TermsOfServicePage";
 import PrivacyPolicyPage from "./components/PrivacyPolicyPage";
+import Seo from "./components/Seo";
 import { useIsMobile } from "./hooks/use-mobile";
+import { buildSeoConfig } from "./lib/seo";
 import {
   AdminManagedUser,
   AdminOverviewData,
@@ -259,6 +261,7 @@ function App() {
     showAddLoan ||
     showAddRepayment ||
     showEmailVerification;
+  const seoConfig = buildSeoConfig(location.pathname, Boolean(user));
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode);
@@ -1450,60 +1453,70 @@ function App() {
   }
 
   if (location.pathname === "/reset-password") {
-    return <ResetPasswordPage onUpdatePassword={handleUpdatePassword} />;
+    return (
+      <>
+        <Seo {...seoConfig} />
+        <ResetPasswordPage onUpdatePassword={handleUpdatePassword} />
+      </>
+    );
   }
 
   if (!user) {
     return (
-      <Routes>
-        <Route path="/terms" element={<TermsOfServicePage />} />
-        <Route path="/privacy" element={<PrivacyPolicyPage />} />
-        <Route
-          path="/reset-password"
-          element={<ResetPasswordPage onUpdatePassword={handleUpdatePassword} />}
-        />
-        <Route
-          path="*"
-          element={
-            <AuthPage
-              onSignIn={handleSignIn}
-              onSignUp={handleSignUp}
-              onPasswordReset={handlePasswordReset}
-            />
-          }
-        />
-      </Routes>
+      <>
+        <Seo {...seoConfig} />
+        <Routes>
+          <Route path="/terms" element={<TermsOfServicePage />} />
+          <Route path="/privacy" element={<PrivacyPolicyPage />} />
+          <Route
+            path="/reset-password"
+            element={<ResetPasswordPage onUpdatePassword={handleUpdatePassword} />}
+          />
+          <Route
+            path="*"
+            element={
+              <AuthPage
+                onSignIn={handleSignIn}
+                onSignUp={handleSignUp}
+                onPasswordReset={handlePasswordReset}
+              />
+            }
+          />
+        </Routes>
+      </>
     );
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar
-        activeSection={activeSection}
-        setActiveSection={handleSectionChange}
-        isOpen={sidebarOpen}
-        setIsOpen={setSidebarOpen}
-        user={user}
-        onSignOut={handleSignOut}
-        isAdmin={isAdmin}
-        showWorkspaceManagement={showWorkspaceManagement}
-      />
-      <div className="flex flex-col flex-1 min-w-0 min-h-screen md:h-screen">
-        <Header
-          title={activeSection}
-          onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+    <>
+      <Seo {...seoConfig} />
+      <div className="flex min-h-screen bg-gray-50">
+        <Sidebar
+          activeSection={activeSection}
+          setActiveSection={handleSectionChange}
+          isOpen={sidebarOpen}
+          setIsOpen={setSidebarOpen}
           user={user}
-          borrowers={borrowers}
-          loans={loans}
-          repayments={repayments}
-          currency={activeCurrency}
-          subscription={subscription}
-          onNavigateSection={handleSectionChange}
-          onOpenSettings={() => handleSectionChange("settings")}
           onSignOut={handleSignOut}
+          isAdmin={isAdmin}
+          showWorkspaceManagement={showWorkspaceManagement}
         />
-        <main className="flex-1 min-h-0 p-3 overflow-auto sm:p-6">
-          <Routes>
+        <div className="flex flex-col flex-1 min-w-0 min-h-screen md:h-screen">
+          <Header
+            title={activeSection}
+            onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+            user={user}
+            borrowers={borrowers}
+            loans={loans}
+            repayments={repayments}
+            currency={activeCurrency}
+            subscription={subscription}
+            onNavigateSection={handleSectionChange}
+            onOpenSettings={() => handleSectionChange("settings")}
+            onSignOut={handleSignOut}
+          />
+          <main className="flex-1 min-h-0 p-3 overflow-auto sm:p-6">
+            <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route
               path="/dashboard"
@@ -1691,45 +1704,46 @@ function App() {
               }
             />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
-        </main>
+            </Routes>
+          </main>
+        </div>
+
+        {showEmailVerification && user && !user.email_confirmed_at && (
+          <EmailVerificationNotice
+            email={user.email || ""}
+            onDismiss={() => setShowEmailVerification(false)}
+            onResend={handleResendVerification}
+            cooldown={resendCooldown}
+          />
+        )}
+
+        {showAddBorrower && (
+          <AddBorrowerModal
+            onClose={() => setShowAddBorrower(false)}
+            onAdd={handleAddBorrower}
+          />
+        )}
+
+        {showAddLoan && (
+          <AddLoanModal
+            borrowers={approvedBorrowers}
+            currency={activeCurrency}
+            onClose={() => setShowAddLoan(false)}
+            onAdd={handleAddLoan}
+          />
+        )}
+
+        {showAddRepayment && (
+          <AddRepaymentModal
+            loans={approvedLoans.filter((loan) => loan.status === "active")}
+            borrowers={approvedBorrowers}
+            currency={activeCurrency}
+            onClose={() => setShowAddRepayment(false)}
+            onAdd={handleAddRepayment}
+          />
+        )}
       </div>
-
-      {showEmailVerification && user && !user.email_confirmed_at && (
-        <EmailVerificationNotice
-          email={user.email || ""}
-          onDismiss={() => setShowEmailVerification(false)}
-          onResend={handleResendVerification}
-          cooldown={resendCooldown}
-        />
-      )}
-
-      {showAddBorrower && (
-        <AddBorrowerModal
-          onClose={() => setShowAddBorrower(false)}
-          onAdd={handleAddBorrower}
-        />
-      )}
-
-      {showAddLoan && (
-        <AddLoanModal
-          borrowers={approvedBorrowers}
-          currency={activeCurrency}
-          onClose={() => setShowAddLoan(false)}
-          onAdd={handleAddLoan}
-        />
-      )}
-
-      {showAddRepayment && (
-        <AddRepaymentModal
-          loans={approvedLoans.filter((loan) => loan.status === "active")}
-          borrowers={approvedBorrowers}
-          currency={activeCurrency}
-          onClose={() => setShowAddRepayment(false)}
-          onAdd={handleAddRepayment}
-        />
-      )}
-    </div>
+    </>
   );
 }
 

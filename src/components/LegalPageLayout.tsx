@@ -1,27 +1,17 @@
-import { ReactNode, useEffect } from "react";
+import { ReactNode } from "react";
 import { Link } from "react-router-dom";
 
 interface LegalPageLayoutProps {
   title: string;
-  pageTitle: string;
   lastUpdated: string;
   children: ReactNode;
 }
 
 export default function LegalPageLayout({
   title,
-  pageTitle,
   lastUpdated,
   children,
 }: LegalPageLayoutProps) {
-  useEffect(() => {
-    document.title = pageTitle;
-
-    return () => {
-      document.title = "LendSmart";
-    };
-  }, [pageTitle]);
-
   return (
     <div className="max-h-screen bg-slate-50 text-slate-700">
       <header className="text-white bg-gradient-to-r from-indigo-700 via-violet-700 to-indigo-900">

@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /borrowers
+Disallow: /loans
+Disallow: /repayments
+Disallow: /reports
+Disallow: /settings
+Disallow: /subscription
+Disallow: /workspace
+Disallow: /admin
+Disallow: /reset-password
+
+Sitemap: https://www.lendsmart.me/sitemap.xml
