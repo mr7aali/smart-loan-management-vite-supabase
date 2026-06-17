@@ -52,5 +52,33 @@ export default defineConfig(({ mode }) => {
       host: "localhost",
       https: localHttps,
     },
+    build: {
+      // Long-term cacheable vendor chunks. Marketing pages benefit because
+      // browsers cache react/router/icons across the marketing -> app flow.
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (!id.includes("node_modules")) return undefined;
+            if (
+              id.includes("/react/") ||
+              id.includes("/react-dom/") ||
+              id.includes("/react-router") ||
+              id.includes("/scheduler/")
+            ) {
+              return "vendor-react";
+            }
+            if (id.includes("@supabase")) return "vendor-supabase";
+            if (id.includes("@radix-ui")) return "vendor-radix";
+            if (id.includes("/recharts/") || id.includes("/d3-")) {
+              return "vendor-charts";
+            }
+            if (id.includes("/lucide-react/")) return "vendor-icons";
+            if (id.includes("/lodash")) return "vendor-lodash";
+            return undefined;
+          },
+        },
+      },
+      chunkSizeWarningLimit: 800,
+    },
   };
 });

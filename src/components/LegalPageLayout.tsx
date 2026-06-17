@@ -53,7 +53,10 @@ export default function LegalPageLayout({
         </div>
       </header>
 
-      <main className="w-full max-h-screen px-4 py-8 mx-auto mb-2 overflow-x-hidden sm:px-6 sm:py-12">
+      <main
+        id="main-content"
+        className="w-full max-h-screen px-4 py-8 mx-auto mb-2 overflow-x-hidden sm:px-6 sm:py-12"
+      >
         <Link
           to="/"
           className="inline-flex items-center px-4 py-2 text-sm font-medium text-indigo-700 transition bg-white border border-indigo-200 rounded-full shadow-sm hover:border-indigo-300 hover:bg-indigo-50"

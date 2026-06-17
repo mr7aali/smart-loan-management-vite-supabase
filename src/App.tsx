@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { User } from "@supabase/supabase-js";
 import {
   Navigate,
@@ -17,13 +17,6 @@ import {
   teamApi,
   workspaceApprovalsApi,
 } from "./lib/supabase";
-import Dashboard from "./components/Dashboard";
-import Borrowers from "./components/Borrowers";
-import Loans from "./components/Loans";
-import Repayments from "./components/Repayments";
-import Reports from "./components/Reports";
-import Settings from "./components/Settings";
-import Help from "./components/Help";
 import Sidebar from "./components/Sidebar";
 import Header from "./components/Header";
 import AddBorrowerModal from "./components/AddBorrowerModal";
@@ -31,19 +24,60 @@ import AddLoanModal from "./components/AddLoanModal";
 import AddRepaymentModal from "./components/AddRepaymentModal";
 import AuthPage from "./components/AuthPage";
 import ResetPasswordPage from "./components/ResetPasswordPage";
-import SubscriptionPage from "./components/SubscriptionPage";
-import WorkspaceUsersPage from "./components/WorkspaceUsersPage";
-import WorkspaceApprovalsPage from "./components/WorkspaceApprovalsPage";
 import EmailVerificationNotice from "./components/EmailVerificationNotice";
-import PayPalCheckoutPage from "./components/PayPalCheckoutPage";
-import AdminOverview from "./components/AdminOverview";
-import AdminUsersPage from "./components/AdminUsersPage";
-import AdminWorkspacesPage from "./components/AdminWorkspacesPage";
 import TermsOfServicePage from "./components/TermsOfServicePage";
 import PrivacyPolicyPage from "./components/PrivacyPolicyPage";
 import Seo from "./components/Seo";
 import { useIsMobile } from "./hooks/use-mobile";
+import { useTheme } from "./hooks/use-theme";
 import { buildSeoConfig } from "./lib/seo";
+
+// Authenticated app pages are loaded on demand so they do not bloat the
+// public/marketing bundle that crawlers and first-time visitors download.
+const Dashboard = lazy(() => import("./components/Dashboard"));
+const Borrowers = lazy(() => import("./components/Borrowers"));
+const Loans = lazy(() => import("./components/Loans"));
+const Repayments = lazy(() => import("./components/Repayments"));
+const Reports = lazy(() => import("./components/Reports"));
+const Settings = lazy(() => import("./components/Settings"));
+const Help = lazy(() => import("./components/Help"));
+const SubscriptionPage = lazy(() => import("./components/SubscriptionPage"));
+const PayPalCheckoutPage = lazy(
+  () => import("./components/PayPalCheckoutPage"),
+);
+const WorkspaceUsersPage = lazy(
+  () => import("./components/WorkspaceUsersPage"),
+);
+const WorkspaceApprovalsPage = lazy(
+  () => import("./components/WorkspaceApprovalsPage"),
+);
+const AdminOverview = lazy(() => import("./components/AdminOverview"));
+const AdminUsersPage = lazy(() => import("./components/AdminUsersPage"));
+const AdminWorkspacesPage = lazy(
+  () => import("./components/AdminWorkspacesPage"),
+);
+
+// Marketing pages are eagerly imported because they are the entry point for
+// crawlers. The authenticated app routes are loaded on demand above.
+import LandingPage from "./components/marketing/LandingPage";
+import FeaturesPage from "./components/marketing/FeaturesPage";
+import PricingPage from "./components/marketing/PricingPage";
+
+const PUBLIC_ROUTE_PATHS = new Set([
+  "/",
+  "/features",
+  "/pricing",
+  "/terms",
+  "/privacy",
+]);
+
+function AppRouteFallback() {
+  return (
+    <div className="flex items-center justify-center w-full min-h-[40vh]">
+      <div className="w-10 h-10 border-b-2 border-indigo-600 rounded-full animate-spin"></div>
+    </div>
+  );
+}
 import {
   AdminManagedUser,
   AdminOverviewData,
@@ -107,34 +141,6 @@ const SECTION_ROUTES: Record<AppSection, string> = {
   "workspace-users": "/workspace/users",
   "workspace-approvals": "/workspace/approvals",
 };
-
-const THEME_STORAGE_KEY = "lendsmart-theme";
-
-function getInitialDarkMode() {
-  if (typeof window === "undefined") {
-    return false;
-  }
-
-  let savedTheme: string | null = null;
-
-  try {
-    savedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
-  } catch {
-    savedTheme = null;
-  }
-
-  if (savedTheme === "dark") {
-    return true;
-  }
-
-  if (savedTheme === "light") {
-    return false;
-  }
-
-  return Boolean(
-    window.matchMedia?.("(prefers-color-scheme: dark)").matches,
-  );
-}
 
 function isAppSection(value: string | null): value is AppSection {
   return value !== null && APP_SECTIONS.includes(value as AppSection);
@@ -214,7 +220,7 @@ function App() {
   const [changingSubscriptionPlan, setChangingSubscriptionPlan] =
     useState<SubscriptionPlanId | null>(null);
   const [showEmailVerification, setShowEmailVerification] = useState(false);
-  const [darkMode, setDarkMode] = useState(getInitialDarkMode);
+  const { darkMode, setDarkMode } = useTheme();
   const [canResendEmail, setCanResendEmail] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [workspaceApprovals, setWorkspaceApprovals] = useState<
@@ -240,7 +246,8 @@ function App() {
   const activePlan: SubscriptionPlanId =
     subscription?.plan || profile?.plan || "free";
   const canManageTeam =
-    workspace?.currentUserRole === "owner" || workspace?.currentUserRole === "admin";
+    workspace?.currentUserRole === "owner" ||
+    workspace?.currentUserRole === "admin";
   const isWorkspaceOwner = workspace?.currentUserRole === "owner";
   const ownerHasTeamMembers = isWorkspaceOwner && teamMembers.length > 1;
   const canInitiateBorrowerLoanChanges =
@@ -255,27 +262,18 @@ function App() {
   const activeCurrency = normalizeCurrency(
     profile?.currency || DEFAULT_CURRENCY,
   );
+  const isPublicRoute = PUBLIC_ROUTE_PATHS.has(location.pathname);
+  // The sidebar is only an overlay on mobile (it slides over content). On
+  // desktop it sits next to content, so it must not block body scroll.
+  // Public marketing routes never lock body scroll regardless of state.
   const hasOverlayOpen =
-    sidebarOpen ||
-    showAddBorrower ||
-    showAddLoan ||
-    showAddRepayment ||
-    showEmailVerification;
+    !isPublicRoute &&
+    ((isMobile && sidebarOpen) ||
+      showAddBorrower ||
+      showAddLoan ||
+      showAddRepayment ||
+      showEmailVerification);
   const seoConfig = buildSeoConfig(location.pathname, Boolean(user));
-
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", darkMode);
-    document.documentElement.style.colorScheme = darkMode ? "dark" : "light";
-
-    try {
-      window.localStorage.setItem(
-        THEME_STORAGE_KEY,
-        darkMode ? "dark" : "light",
-      );
-    } catch {
-      // Theme still applies for the active session if persistence is blocked.
-    }
-  }, [darkMode]);
 
   useEffect(() => {
     if (resendCooldown > 0) {
@@ -384,11 +382,13 @@ function App() {
       );
       const profilesResult = await db.getProfilesByIds(profileIds);
       const profileById = new Map(
-        ((profilesResult.data || []) as Array<{
-          id: string;
-          email: string | null;
-          full_name: string | null;
-        }>).map((profile) => [profile.id, profile]),
+        (
+          (profilesResult.data || []) as Array<{
+            id: string;
+            email: string | null;
+            full_name: string | null;
+          }>
+        ).map((profile) => [profile.id, profile]),
       );
       const getUserSummary = (userId?: string | null) => {
         if (!userId) return null;
@@ -519,10 +519,7 @@ function App() {
       }.`;
     }
 
-    if (
-      plan.maxBorrowers !== null &&
-      nextBorrowerCount > plan.maxBorrowers
-    ) {
+    if (plan.maxBorrowers !== null && nextBorrowerCount > plan.maxBorrowers) {
       return `The ${plan.name} plan allows up to ${plan.maxBorrowers} borrowers.`;
     }
 
@@ -766,7 +763,9 @@ function App() {
         error?.message?.includes("429") ||
         error?.message?.includes("try again later")
       ) {
-        throw new Error("Too many requests. Please wait a few minutes and try again.");
+        throw new Error(
+          "Too many requests. Please wait a few minutes and try again.",
+        );
       }
 
       if (error) throw error;
@@ -851,13 +850,18 @@ function App() {
             approvalStatus,
           });
         } catch (auditError) {
-          console.warn("Unable to record borrower initiation audit:", auditError);
+          console.warn(
+            "Unable to record borrower initiation audit:",
+            auditError,
+          );
         }
         await loadWorkspaceActivity(workspace.id);
       }
       setShowAddBorrower(false);
       if (approvalStatus === "pending") {
-        alert("Borrower initiated and sent to the workspace owner for approval.");
+        alert(
+          "Borrower initiated and sent to the workspace owner for approval.",
+        );
       }
     } catch (error) {
       console.error("Error adding borrower:", error);
@@ -909,7 +913,9 @@ function App() {
       });
       if (error) throw error;
       if (data) {
-        const borrower = approvedBorrowers.find((b) => b.id === loan.borrowerId);
+        const borrower = approvedBorrowers.find(
+          (b) => b.id === loan.borrowerId,
+        );
         setLoans((prev) => [
           normalizeLoan({ ...data, borrowers: borrower }),
           ...prev,
@@ -1030,7 +1036,9 @@ function App() {
     if (!user) return;
 
     if (!canManageTeam) {
-      alert("Only a workspace owner or admin can change the subscription plan.");
+      alert(
+        "Only a workspace owner or admin can change the subscription plan.",
+      );
       return;
     }
 
@@ -1069,7 +1077,9 @@ function App() {
         await loadProfile(user.id);
         await loadWorkspace();
         navigate("/subscription", { replace: true });
-        alert(`You are now on the ${SUBSCRIPTION_PLANS_BY_ID[plan].name} plan.`);
+        alert(
+          `You are now on the ${SUBSCRIPTION_PLANS_BY_ID[plan].name} plan.`,
+        );
       } catch (error) {
         console.error("Error changing subscription:", error);
         alert(
@@ -1083,7 +1093,8 @@ function App() {
       return;
     }
 
-    const isUpgrade = SUBSCRIPTION_PLANS_BY_ID[plan].price >
+    const isUpgrade =
+      SUBSCRIPTION_PLANS_BY_ID[plan].price >
       SUBSCRIPTION_PLANS_BY_ID[activePlan].price;
 
     if (isUpgrade) {
@@ -1143,7 +1154,9 @@ function App() {
     );
 
     if (planLimitViolation) {
-      throw new Error(`${planLimitViolation} Upgrade your subscription to add more members.`);
+      throw new Error(
+        `${planLimitViolation} Upgrade your subscription to add more members.`,
+      );
     }
 
     const { error } = await teamApi.addMember(email);
@@ -1444,6 +1457,34 @@ function App() {
     }
   };
 
+  // Public marketing routes always render their full content immediately,
+  // even while auth state is still resolving. This is what crawlers and
+  // first-time visitors see, and it matches what the prerender step bakes
+  // into the static HTML at build time.
+  if (PUBLIC_ROUTE_PATHS.has(location.pathname)) {
+    return (
+      <>
+        <Seo {...seoConfig} />
+        <Routes>
+          <Route
+            path="/"
+            element={<LandingPage isAuthenticated={Boolean(user)} />}
+          />
+          <Route
+            path="/features"
+            element={<FeaturesPage isAuthenticated={Boolean(user)} />}
+          />
+          <Route
+            path="/pricing"
+            element={<PricingPage isAuthenticated={Boolean(user)} />}
+          />
+          <Route path="/terms" element={<TermsOfServicePage />} />
+          <Route path="/privacy" element={<PrivacyPolicyPage />} />
+        </Routes>
+      </>
+    );
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
@@ -1461,29 +1502,29 @@ function App() {
     );
   }
 
-  if (!user) {
+  if (location.pathname === "/login") {
+    if (user) {
+      return <Navigate to="/dashboard" replace />;
+    }
     return (
       <>
         <Seo {...seoConfig} />
-        <Routes>
-          <Route path="/terms" element={<TermsOfServicePage />} />
-          <Route path="/privacy" element={<PrivacyPolicyPage />} />
-          <Route
-            path="/reset-password"
-            element={<ResetPasswordPage onUpdatePassword={handleUpdatePassword} />}
-          />
-          <Route
-            path="*"
-            element={
-              <AuthPage
-                onSignIn={handleSignIn}
-                onSignUp={handleSignUp}
-                onPasswordReset={handlePasswordReset}
-              />
-            }
-          />
-        </Routes>
+        <AuthPage
+          onSignIn={handleSignIn}
+          onSignUp={handleSignUp}
+          onPasswordReset={handlePasswordReset}
+        />
       </>
+    );
+  }
+
+  if (!user) {
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={{ from: location.pathname + location.search }}
+      />
     );
   }
 
@@ -1516,195 +1557,205 @@ function App() {
             onSignOut={handleSignOut}
           />
           <main className="flex-1 min-h-0 p-3 overflow-auto sm:p-6">
-            <Routes>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route
-              path="/dashboard"
-              element={
-                <Dashboard
-                  borrowers={approvedBorrowers}
-                  currency={activeCurrency}
-                  loans={approvedLoans}
-                  repayments={repayments}
+            <Suspense fallback={<AppRouteFallback />}>
+              <Routes>
+                <Route
+                  path="/"
+                  element={<Navigate to="/dashboard" replace />}
                 />
-              }
-            />
-            <Route
-              path="/borrowers"
-              element={
-                <Borrowers
-                  borrowers={borrowers}
-                  loans={approvedLoans}
-                  repayments={repayments}
-                  currency={activeCurrency}
-                  onAdd={handleOpenAddBorrower}
-                  onDelete={handleDeleteBorrower}
-                  onSelect={() => {}}
+                <Route
+                  path="/dashboard"
+                  element={
+                    <Dashboard
+                      borrowers={approvedBorrowers}
+                      currency={activeCurrency}
+                      loans={approvedLoans}
+                      repayments={repayments}
+                    />
+                  }
                 />
-              }
-            />
-            <Route
-              path="/loans"
-              element={
-                <Loans
-                  loans={loans}
-                  borrowers={approvedBorrowers}
-                  currency={activeCurrency}
-                  repayments={repayments}
-                  onAdd={handleOpenAddLoan}
-                  onDelete={handleDeleteLoan}
-                  onSelect={() => {}}
+                <Route
+                  path="/borrowers"
+                  element={
+                    <Borrowers
+                      borrowers={borrowers}
+                      loans={approvedLoans}
+                      repayments={repayments}
+                      currency={activeCurrency}
+                      onAdd={handleOpenAddBorrower}
+                      onDelete={handleDeleteBorrower}
+                      onSelect={() => {}}
+                    />
+                  }
                 />
-              }
-            />
-            <Route
-              path="/repayments"
-              element={
-                <Repayments
-                  repayments={repayments}
-                  loans={approvedLoans.filter(
-                    (loan) => loan.status === "active",
-                  )}
-                  borrowers={approvedBorrowers}
-                  currency={activeCurrency}
-                  onAdd={() => setShowAddRepayment(true)}
+                <Route
+                  path="/loans"
+                  element={
+                    <Loans
+                      loans={loans}
+                      borrowers={approvedBorrowers}
+                      currency={activeCurrency}
+                      repayments={repayments}
+                      onAdd={handleOpenAddLoan}
+                      onDelete={handleDeleteLoan}
+                      onSelect={() => {}}
+                    />
+                  }
                 />
-              }
-            />
-            <Route
-              path="/reports"
-              element={
-                <Reports
-                  borrowers={approvedBorrowers}
-                  loans={approvedLoans}
-                  repayments={repayments}
-                  currency={activeCurrency}
+                <Route
+                  path="/repayments"
+                  element={
+                    <Repayments
+                      repayments={repayments}
+                      loans={approvedLoans.filter(
+                        (loan) => loan.status === "active",
+                      )}
+                      borrowers={approvedBorrowers}
+                      currency={activeCurrency}
+                      onAdd={() => setShowAddRepayment(true)}
+                    />
+                  }
                 />
-              }
-            />
-            <Route
-              path="/subscription"
-              element={
-                <SubscriptionPage
-                  currentPlan={activePlan}
-                  changingPlan={changingSubscriptionPlan}
-                  onUpgrade={handleSubscriptionChange}
+                <Route
+                  path="/reports"
+                  element={
+                    <Reports
+                      borrowers={approvedBorrowers}
+                      loans={approvedLoans}
+                      repayments={repayments}
+                      currency={activeCurrency}
+                    />
+                  }
                 />
-              }
-            />
-            <Route
-              path="/subscription/checkout/:planId"
-              element={
-                <SubscriptionCheckoutRoute
-                  onBack={() => navigate("/subscription")}
-                  onSuccess={handleCheckoutSuccess}
+                <Route
+                  path="/subscription"
+                  element={
+                    <SubscriptionPage
+                      currentPlan={activePlan}
+                      changingPlan={changingSubscriptionPlan}
+                      onUpgrade={handleSubscriptionChange}
+                    />
+                  }
                 />
-              }
-            />
-            <Route path="/help" element={<Help />} />
-            <Route path="/terms" element={<TermsOfServicePage />} />
-            <Route path="/privacy" element={<PrivacyPolicyPage />} />
-            <Route
-              path="/settings"
-              element={
-        <Settings
-          user={user}
-          profile={profile}
-                  borrowers={borrowers}
-                  loans={loans}
-                  repayments={repayments}
-          onSignOut={handleSignOut}
-          onUpdateCurrency={handleCurrencyChange}
-          darkMode={darkMode}
-          onToggleDarkMode={() => setDarkMode((enabled) => !enabled)}
-          subscription={subscription}
-        />
-              }
-            />
-            <Route
-              path="/workspace/users"
-              element={
-                showWorkspaceManagement ? (
-                  <WorkspaceUsersPage
-                    workspace={workspace}
-                    teamMembers={teamMembers}
-                    teamLoading={teamLoading}
-                    canManageTeam={canManageTeam}
-                    currentPlan={activePlan}
-                    onAddTeamMember={handleAddTeamMember}
-                    onRemoveTeamMember={handleRemoveTeamMember}
-                  />
-                ) : (
-                  <Navigate to="/subscription" replace />
-                )
-              }
-            />
-            <Route
-              path="/workspace/approvals"
-              element={
-                showWorkspaceManagement ? (
-                  <WorkspaceApprovalsPage
-                    approvals={workspaceApprovals}
-                    auditEvents={workspaceAuditEvents}
-                    loading={workspaceActivityLoading}
-                    currentUserRole={workspace?.currentUserRole}
-                    currency={activeCurrency}
-                    onRefresh={() => void loadWorkspaceActivity()}
-                    onReview={handleReviewWorkspaceApproval}
-                  />
-                ) : (
-                  <Navigate to="/subscription" replace />
-                )
-              }
-            />
-            <Route
-              path="/admin/overview"
-              element={
-                isAdmin ? (
-                  <AdminOverview
-                    data={adminOverview}
-                    loading={adminOverviewLoading}
-                    onRefresh={() => void loadAdminOverview()}
-                  />
-                ) : (
-                  <Navigate to="/dashboard" replace />
-                )
-              }
-            />
-            <Route
-              path="/admin/users"
-              element={
-                isAdmin ? (
-                  <AdminUsersPage
-                    users={adminUsers}
-                    loading={adminUsersLoading}
-                    onRefresh={() => void loadAdminUsers()}
-                    onUpdateUser={handleAdminUserUpdate}
-                  />
-                ) : (
-                  <Navigate to="/dashboard" replace />
-                )
-              }
-            />
-            <Route
-              path="/admin/workspaces"
-              element={
-                isAdmin ? (
-                  <AdminWorkspacesPage
-                    workspaces={adminWorkspaces}
-                    loading={adminWorkspacesLoading}
-                    onRefresh={() => void loadAdminWorkspaces()}
-                    onAddMember={handleAdminAddWorkspaceMember}
-                    onRemoveMember={handleAdminRemoveWorkspaceMember}
-                    onChangeRole={handleAdminWorkspaceRoleChange}
-                  />
-                ) : (
-                  <Navigate to="/dashboard" replace />
-                )
-              }
-            />
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-            </Routes>
+                <Route
+                  path="/subscription/checkout/:planId"
+                  element={
+                    <SubscriptionCheckoutRoute
+                      onBack={() => navigate("/subscription")}
+                      onSuccess={handleCheckoutSuccess}
+                    />
+                  }
+                />
+                <Route path="/help" element={<Help />} />
+                <Route path="/terms" element={<TermsOfServicePage />} />
+                <Route path="/privacy" element={<PrivacyPolicyPage />} />
+                <Route
+                  path="/settings"
+                  element={
+                    <Settings
+                      user={user}
+                      profile={profile}
+                      borrowers={borrowers}
+                      loans={loans}
+                      repayments={repayments}
+                      onSignOut={handleSignOut}
+                      onUpdateCurrency={handleCurrencyChange}
+                      darkMode={darkMode}
+                      onToggleDarkMode={() =>
+                        setDarkMode((enabled) => !enabled)
+                      }
+                      subscription={subscription}
+                    />
+                  }
+                />
+                <Route
+                  path="/workspace/users"
+                  element={
+                    showWorkspaceManagement ? (
+                      <WorkspaceUsersPage
+                        workspace={workspace}
+                        teamMembers={teamMembers}
+                        teamLoading={teamLoading}
+                        canManageTeam={canManageTeam}
+                        currentPlan={activePlan}
+                        onAddTeamMember={handleAddTeamMember}
+                        onRemoveTeamMember={handleRemoveTeamMember}
+                      />
+                    ) : (
+                      <Navigate to="/subscription" replace />
+                    )
+                  }
+                />
+                <Route
+                  path="/workspace/approvals"
+                  element={
+                    showWorkspaceManagement ? (
+                      <WorkspaceApprovalsPage
+                        approvals={workspaceApprovals}
+                        auditEvents={workspaceAuditEvents}
+                        loading={workspaceActivityLoading}
+                        currentUserRole={workspace?.currentUserRole}
+                        currency={activeCurrency}
+                        onRefresh={() => void loadWorkspaceActivity()}
+                        onReview={handleReviewWorkspaceApproval}
+                      />
+                    ) : (
+                      <Navigate to="/subscription" replace />
+                    )
+                  }
+                />
+                <Route
+                  path="/admin/overview"
+                  element={
+                    isAdmin ? (
+                      <AdminOverview
+                        data={adminOverview}
+                        loading={adminOverviewLoading}
+                        onRefresh={() => void loadAdminOverview()}
+                      />
+                    ) : (
+                      <Navigate to="/dashboard" replace />
+                    )
+                  }
+                />
+                <Route
+                  path="/admin/users"
+                  element={
+                    isAdmin ? (
+                      <AdminUsersPage
+                        users={adminUsers}
+                        loading={adminUsersLoading}
+                        onRefresh={() => void loadAdminUsers()}
+                        onUpdateUser={handleAdminUserUpdate}
+                      />
+                    ) : (
+                      <Navigate to="/dashboard" replace />
+                    )
+                  }
+                />
+                <Route
+                  path="/admin/workspaces"
+                  element={
+                    isAdmin ? (
+                      <AdminWorkspacesPage
+                        workspaces={adminWorkspaces}
+                        loading={adminWorkspacesLoading}
+                        onRefresh={() => void loadAdminWorkspaces()}
+                        onAddMember={handleAdminAddWorkspaceMember}
+                        onRemoveMember={handleAdminRemoveWorkspaceMember}
+                        onChangeRole={handleAdminWorkspaceRoleChange}
+                      />
+                    ) : (
+                      <Navigate to="/dashboard" replace />
+                    )
+                  }
+                />
+                <Route
+                  path="*"
+                  element={<Navigate to="/dashboard" replace />}
+                />
+              </Routes>
+            </Suspense>
           </main>
         </div>
 

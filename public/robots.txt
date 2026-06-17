@@ -1,5 +1,9 @@
 User-agent: *
 Allow: /
+
+# Authenticated app surfaces are not useful for search engines.
+Disallow: /login
+Disallow: /reset-password
 Disallow: /dashboard
 Disallow: /borrowers
 Disallow: /loans
@@ -9,6 +13,6 @@ Disallow: /settings
 Disallow: /subscription
 Disallow: /workspace
 Disallow: /admin
-Disallow: /reset-password
+Disallow: /help
 
-Sitemap: https://www.lendsmart.me/sitemap.xml
+Sitemap: https://lendsmart.me/sitemap.xml
