@@ -1,5 +1,10 @@
 import { useEffect } from "react";
-import { absoluteUrl, DEFAULT_IMAGE, DEFAULT_KEYWORDS, SITE_NAME } from "../lib/seo";
+import {
+  absoluteUrl,
+  DEFAULT_IMAGE,
+  DEFAULT_KEYWORDS,
+  SITE_NAME,
+} from "../lib/seo";
 import type { SeoConfig } from "../lib/seo";
 
 function upsertMeta(
@@ -34,18 +39,25 @@ function upsertLink(rel: string, href: string) {
   element.setAttribute("href", href);
 }
 
-function upsertJsonLd(data: Record<string, unknown>) {
-  const id = "structured-data";
-  let element = document.head.querySelector<HTMLScriptElement>(`#${id}`);
+function setStructuredData(
+  data: Record<string, unknown> | Array<Record<string, unknown>> | undefined,
+) {
+  // Remove every JSON-LD block we previously added (and the legacy one from index.html).
+  document.head
+    .querySelectorAll('script[type="application/ld+json"]')
+    .forEach((node) => node.remove());
 
-  if (!element) {
-    element = document.createElement("script");
-    element.id = id;
+  if (!data) return;
+
+  const items = Array.isArray(data) ? data : [data];
+
+  items.forEach((item) => {
+    const element = document.createElement("script");
     element.type = "application/ld+json";
+    element.setAttribute("data-seo", "true");
+    element.textContent = JSON.stringify(item);
     document.head.appendChild(element);
-  }
-
-  element.textContent = JSON.stringify(data);
+  });
 }
 
 export default function Seo({
@@ -61,7 +73,9 @@ export default function Seo({
   useEffect(() => {
     const canonicalUrl = absoluteUrl(path);
     const imageUrl = absoluteUrl(image);
-    const robots = noindex ? "noindex, nofollow" : "index, follow";
+    const robots = noindex
+      ? "noindex, nofollow"
+      : "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1";
 
     document.documentElement.lang = "en";
     document.title = title;
@@ -70,6 +84,8 @@ export default function Seo({
     upsertMeta("name", "keywords", keywords);
     upsertMeta("name", "robots", robots);
     upsertMeta("name", "author", SITE_NAME);
+    upsertMeta("name", "application-name", SITE_NAME);
+    upsertMeta("name", "apple-mobile-web-app-title", SITE_NAME);
 
     upsertMeta("property", "og:site_name", SITE_NAME);
     upsertMeta("property", "og:title", title);
@@ -77,18 +93,21 @@ export default function Seo({
     upsertMeta("property", "og:type", type);
     upsertMeta("property", "og:url", canonicalUrl);
     upsertMeta("property", "og:image", imageUrl);
+    upsertMeta("property", "og:image:alt", `${SITE_NAME} - ${title}`);
+    upsertMeta("property", "og:locale", "en_US");
 
     upsertMeta("name", "twitter:card", "summary_large_image");
     upsertMeta("name", "twitter:title", title);
     upsertMeta("name", "twitter:description", description);
     upsertMeta("name", "twitter:image", imageUrl);
+    upsertMeta("name", "twitter:image:alt", `${SITE_NAME} - ${title}`);
 
     upsertLink("canonical", canonicalUrl);
 
-    if (structuredData && !noindex) {
-      upsertJsonLd(structuredData);
+    if (!noindex) {
+      setStructuredData(structuredData);
     } else {
-      document.head.querySelector("#structured-data")?.remove();
+      setStructuredData(undefined);
     }
   }, [
     description,
