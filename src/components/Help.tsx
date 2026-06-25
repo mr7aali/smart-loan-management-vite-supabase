@@ -63,7 +63,7 @@ export default function Help() {
     {
       question: "How do I record a new loan?",
       answer:
-        "Go to the Loans section and click 'Create Loan'. Select the borrower from the dropdown, enter the loan amount, interest rate, term in months, and start date. The app calculates the due date, EMI, and total payable automatically.",
+        "Go to the Loans section and click 'Create Loan'. Select the borrower, then enter the principal, annual flat interest rate, term, and start date. Interest is calculated as principal × annual rate × (months ÷ 12), and the app shows the monthly installment and total payable automatically.",
     },
     {
       question: "How do I record repayments?",
@@ -154,7 +154,7 @@ export default function Help() {
     {
       id: "managing-loans",
       title: "Managing Loans",
-      body: "Use the loan table to review amount, interest, term, due date, repayment progress, and live status. Overdue loans surface automatically when the due date passes and the loan is not fully paid.",
+      body: "Use the loan table to review principal, flat interest, term, due date, total repayment progress, and live status. A loan is fully paid only after the principal and flat interest have both been collected.",
     },
     {
       id: "reports-analytics",

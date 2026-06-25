@@ -20,24 +20,22 @@ export const formatDate = (date: string): string => {
   });
 };
 
-export const calculateEMI = (principal: number, rate: number, months: number): number => {
-  if (principal <= 0 || months <= 0) return 0;
-  const monthlyRate = rate / 100 / 12;
-  if (monthlyRate === 0) {
-    return Math.round((principal / months) * 100) / 100;
-  }
-  const emi = (principal * monthlyRate * Math.pow(1 + monthlyRate, months)) / (Math.pow(1 + monthlyRate, months) - 1);
-  return Math.round(emi * 100) / 100;
-};
+const roundMoney = (value: number): number =>
+  Math.round((value + Number.EPSILON) * 100) / 100;
 
 export const calculateTotalInterest = (principal: number, rate: number, months: number): number => {
-  const emi = calculateEMI(principal, rate, months);
-  return (emi * months) - principal;
+  if (principal <= 0 || rate <= 0 || months <= 0) return 0;
+  return roundMoney(principal * (rate / 100) * (months / 12));
 };
 
 export const calculateTotalPayable = (principal: number, rate: number, months: number): number => {
-  const emi = calculateEMI(principal, rate, months);
-  return emi * months;
+  if (principal <= 0) return 0;
+  return roundMoney(principal + calculateTotalInterest(principal, rate, months));
+};
+
+export const calculateEMI = (principal: number, rate: number, months: number): number => {
+  if (principal <= 0 || months <= 0) return 0;
+  return roundMoney(calculateTotalPayable(principal, rate, months) / months);
 };
 
 export const normalizeBorrower = (borrower: Partial<Borrower> | null | undefined): Borrower => {
@@ -139,6 +137,20 @@ export const getLoanTermMonths = (loan: Loan): number => {
   return loan.termMonths ?? loan.term_months ?? 0;
 };
 
+export const getLoanTotalInterest = (loan: Loan): number =>
+  calculateTotalInterest(
+    getLoanAmount(loan),
+    getLoanInterestRate(loan),
+    getLoanTermMonths(loan),
+  );
+
+export const getLoanTotalPayable = (loan: Loan): number =>
+  calculateTotalPayable(
+    getLoanAmount(loan),
+    getLoanInterestRate(loan),
+    getLoanTermMonths(loan),
+  );
+
 // Helper to get repayment's loan ID (handles both formats)
 export const getRepaymentLoanId = (repayment: Repayment): string => {
   return repayment.loanId || repayment.loan_id || '';
@@ -148,15 +160,11 @@ export const getLoanStatus = (
   loan: Loan,
   repayments: Repayment[]
 ): 'active' | 'paid' | 'overdue' => {
-  if (loan.status === 'paid') {
-    return 'paid';
-  }
-
   const totalPaid = repayments
     .filter((repayment) => getRepaymentLoanId(repayment) === loan.id)
     .reduce((sum, repayment) => sum + repayment.amount, 0);
 
-  if (totalPaid >= getLoanAmount(loan)) {
+  if (totalPaid >= getLoanTotalPayable(loan)) {
     return 'paid';
   }
 
@@ -176,8 +184,8 @@ export const getLoanProgress = (loan: Loan, repayments: Repayment[]): number => 
   const totalPaid = repayments
     .filter(r => getRepaymentLoanId(r) === loanId)
     .reduce((sum, r) => sum + r.amount, 0);
-  const amount = getLoanAmount(loan);
-  return amount > 0 ? Math.min((totalPaid / amount) * 100, 100) : 0;
+  const totalPayable = getLoanTotalPayable(loan);
+  return totalPayable > 0 ? Math.min((totalPaid / totalPayable) * 100, 100) : 0;
 };
 
 export const getRemainingAmount = (loan: Loan, repayments: Repayment[]): number => {
@@ -185,7 +193,7 @@ export const getRemainingAmount = (loan: Loan, repayments: Repayment[]): number 
   const totalPaid = repayments
     .filter(r => getRepaymentLoanId(r) === loanId)
     .reduce((sum, r) => sum + r.amount, 0);
-  return Math.max(getLoanAmount(loan) - totalPaid, 0);
+  return Math.max(roundMoney(getLoanTotalPayable(loan) - totalPaid), 0);
 };
 
 export const getBorrowerById = (borrowers: Borrower[], id: string): Borrower | undefined => {
@@ -211,7 +219,8 @@ export const getActiveLoansValue = (loans: Loan[]): number => {
 export const getOverdueLoans = (loans: Loan[]): Loan[] => {
   const today = new Date();
   return loans.filter((loan) => {
-    if (loan.status !== 'active') return false;
+    if (loan.status === 'paid') return false;
+    if (loan.status === 'overdue') return true;
     const dueDate = new Date(getLoanDueDate(loan));
     return !Number.isNaN(dueDate.getTime()) && dueDate < today;
   });

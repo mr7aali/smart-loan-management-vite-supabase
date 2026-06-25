@@ -142,16 +142,19 @@ export async function backfillAccountRecordsForAuthUsers(authUsers: User[]) {
   const [{ data: existingProfiles }, { data: existingSubscriptions }] =
     await Promise.all([
       admin.from("profiles").select("id").in("id", userIds),
-      admin.from("subscriptions").select("user_id").in("user_id", userIds),
+      admin
+        .from("subscriptions")
+        .select("user_id, organization_id")
+        .in("user_id", userIds),
     ]);
 
   const existingProfileIds = new Set(
     (existingProfiles ?? []).map((profile) => profile.id as string),
   );
-  const existingSubscriptionIds = new Set(
-    (existingSubscriptions ?? []).map(
-      (subscription) => subscription.user_id as string,
-    ),
+  const existingSubscriptionOrganizationIds = new Set(
+    (existingSubscriptions ?? [])
+      .map((subscription) => subscription.organization_id as string | null)
+      .filter(Boolean) as string[],
   );
 
   const nowIso = new Date().toISOString();
@@ -282,36 +285,51 @@ export async function backfillAccountRecordsForAuthUsers(authUsers: User[]) {
     }
   }
 
-  const workspaceProfileById = new Map(
-    profilesWithWorkspaces.map((profile) => [profile.id as string, profile]),
+  const workspaceIds = Array.from(
+    new Set(
+      profilesWithWorkspaces.map(
+        (profile) => profile.current_organization_id as string,
+      ),
+    ),
   );
+  const { data: workspaceOwners, error: workspaceOwnersError } =
+    workspaceIds.length > 0
+      ? await admin
+          .from("organizations")
+          .select("id, owner_id, created_at")
+          .in("id", workspaceIds)
+      : { data: [], error: null };
 
-  const missingSubscriptions = authUsers
-    .filter((user) => !existingSubscriptionIds.has(user.id))
-    .map((user) => {
-      const workspaceProfile = workspaceProfileById.get(user.id);
-      return workspaceProfile?.current_organization_id
-        ? {
-            user_id: user.id,
-            organization_id: workspaceProfile.current_organization_id,
-            plan: "free",
-            status: "active",
-            billing_cycle: "monthly",
-            price: PLAN_DETAILS.free.price,
-            start_date: user.created_at ?? nowIso,
-            end_date: null,
-            created_at: user.created_at ?? nowIso,
-            updated_at: nowIso,
-          }
-        : null;
-    })
-    .filter(Boolean);
+  if (workspaceOwnersError) {
+    throw new HttpError(
+      500,
+      `Failed to load workspace owners: ${workspaceOwnersError.message}`,
+    );
+  }
+
+  const missingSubscriptions = (workspaceOwners ?? [])
+    .filter(
+      (workspace) =>
+        !existingSubscriptionOrganizationIds.has(workspace.id as string),
+    )
+    .map((workspace) => ({
+      user_id: workspace.owner_id,
+      organization_id: workspace.id,
+      plan: "free",
+      status: "active",
+      billing_cycle: "monthly",
+      price: PLAN_DETAILS.free.price,
+      start_date: workspace.created_at ?? nowIso,
+      end_date: null,
+      created_at: workspace.created_at ?? nowIso,
+      updated_at: nowIso,
+    }));
 
   if (missingSubscriptions.length > 0) {
     const { error } = await admin
       .from("subscriptions")
       .upsert(missingSubscriptions, {
-        onConflict: "user_id",
+        onConflict: "organization_id",
       });
 
     if (error) {
@@ -590,7 +608,7 @@ export async function updateUserAccessAndSubscription(options: {
   planId?: SubscriptionPlanId;
   subscriptionStatus?: "active" | "cancelled" | "expired";
   endDate?: string | null;
-}) {
+}): Promise<WorkspaceContext> {
   const admin = createAdminClient();
   const {
     actorUserId,
@@ -623,12 +641,24 @@ export async function updateUserAccessAndSubscription(options: {
     );
   }
 
-  const { data: existingSubscription } = await admin
+  const workspace = await getWorkspaceForUser(userId);
+  if (!workspace.id) {
+    throw new HttpError(400, "The selected user has no valid workspace.");
+  }
+
+  const { data: existingSubscription, error: subscriptionLookupError } =
+    await admin
     .from("subscriptions")
     .select("*")
-    .eq("user_id", userId)
+    .eq("organization_id", workspace.id)
     .maybeSingle();
-  const workspace = await getWorkspaceForUser(userId);
+
+  if (subscriptionLookupError) {
+    throw new HttpError(
+      500,
+      `Failed to load workspace subscription: ${subscriptionLookupError.message}`,
+    );
+  }
 
   const nextPlanId = planId ?? existingSubscription?.plan ?? existingProfile.plan;
   if (!isSubscriptionPlanId(nextPlanId)) {
@@ -676,7 +706,7 @@ export async function updateUserAccessAndSubscription(options: {
     .from("subscriptions")
     .upsert(
       {
-        user_id: userId,
+        user_id: workspace.owner_id,
         organization_id: workspace.id,
         plan: nextPlanId,
         status: subscriptionStatus ?? existingSubscription?.status ?? "active",
@@ -687,7 +717,7 @@ export async function updateUserAccessAndSubscription(options: {
         updated_at: nowIso,
       },
       {
-        onConflict: "user_id",
+        onConflict: "organization_id",
       },
     );
 
@@ -697,4 +727,6 @@ export async function updateUserAccessAndSubscription(options: {
       `Failed to update subscription: ${subscriptionUpdateError.message}`,
     );
   }
+
+  return workspace;
 }

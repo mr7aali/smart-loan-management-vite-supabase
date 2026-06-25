@@ -8,6 +8,10 @@ import {
   getLoanBorrowerId,
   getLoanDueDate,
   getLoanInterestRate,
+  getLoanProgress,
+  getLoanTotalInterest,
+  getLoanTotalPayable,
+  getRemainingAmount,
   getRepaymentLoanId,
 } from '../utils';
 import { downloadCsv } from '../lib/export';
@@ -30,8 +34,12 @@ export default function Reports({
   const [selectedReport, setSelectedReport] = useState('portfolio');
 
   const totalDisbursed = loans.reduce((sum, loan) => sum + loan.amount, 0);
+  const totalReceivable = loans.reduce((sum, loan) => sum + getLoanTotalPayable(loan), 0);
   const totalCollected = repayments.reduce((sum, repayment) => sum + repayment.amount, 0);
-  const totalOutstanding = totalDisbursed - totalCollected;
+  const totalOutstanding = loans.reduce(
+    (sum, loan) => sum + getRemainingAmount(loan, repayments),
+    0,
+  );
 
   const activeLoans = loans.filter((loan) => loan.status === 'active');
   const paidLoans = loans.filter((loan) => loan.status === 'paid');
@@ -40,6 +48,7 @@ export default function Reports({
       loan.status === 'overdue' ||
       (loan.status === 'active' && new Date(getLoanDueDate(loan)) < new Date())
   );
+  const outstandingLoans = loans.filter((loan) => loan.status !== 'paid');
 
   const avgInterestRate = loans.length > 0
     ? loans.reduce((sum, loan) => sum + getLoanInterestRate(loan), 0) / loans.length
@@ -65,19 +74,19 @@ export default function Reports({
     {
       status: 'Active',
       count: activeLoans.length,
-      amount: activeLoans.reduce((sum, loan) => sum + loan.amount, 0),
+      amount: activeLoans.reduce((sum, loan) => sum + getLoanTotalPayable(loan), 0),
       color: 'bg-indigo-500',
     },
     {
       status: 'Paid',
       count: paidLoans.length,
-      amount: paidLoans.reduce((sum, loan) => sum + loan.amount, 0),
+      amount: paidLoans.reduce((sum, loan) => sum + getLoanTotalPayable(loan), 0),
       color: 'bg-emerald-500',
     },
     {
       status: 'Overdue',
       count: overdueLoans.length,
-      amount: overdueLoans.reduce((sum, loan) => sum + loan.amount, 0),
+      amount: overdueLoans.reduce((sum, loan) => sum + getLoanTotalPayable(loan), 0),
       color: 'bg-red-500',
     },
   ];
@@ -102,10 +111,11 @@ export default function Reports({
     if (selectedReport === 'portfolio') {
       downloadCsv('portfolio-summary.csv', [
         { metric: 'Total Disbursed', value: totalDisbursed },
+        { metric: 'Total Receivable', value: totalReceivable },
         { metric: 'Total Collected', value: totalCollected },
         { metric: 'Outstanding', value: totalOutstanding },
-        { metric: 'Collection Rate', value: `${totalDisbursed > 0 ? ((totalCollected / totalDisbursed) * 100).toFixed(1) : 0}%` },
-        { metric: 'Average Interest Rate', value: `${avgInterestRate.toFixed(1)}%` },
+        { metric: 'Collection Rate', value: `${totalReceivable > 0 ? ((totalCollected / totalReceivable) * 100).toFixed(1) : 0}%` },
+        { metric: 'Average Flat Interest Rate', value: `${avgInterestRate.toFixed(1)}%` },
         { metric: 'Average Loan Amount', value: avgLoanAmount },
       ]);
       return;
@@ -114,19 +124,22 @@ export default function Reports({
     if (selectedReport === 'collection') {
       downloadCsv(
         'collection-report.csv',
-        activeLoans.map((loan) => {
+        outstandingLoans.map((loan) => {
           const borrower = getBorrowerById(borrowers, getLoanBorrowerId(loan));
           const loanRepayments = repayments.filter((repayment) => getRepaymentLoanId(repayment) === loan.id);
           const totalPaid = loanRepayments.reduce((sum, repayment) => sum + repayment.amount, 0);
-          const remaining = loan.amount - totalPaid;
+          const totalPayable = getLoanTotalPayable(loan);
+          const remaining = getRemainingAmount(loan, repayments);
 
           return {
             borrower: borrower?.name || 'Unknown',
             loan_id: loan.id,
             loan_amount: loan.amount,
+            flat_interest: getLoanTotalInterest(loan),
+            total_payable: totalPayable,
             total_paid: totalPaid,
             remaining,
-            progress_percent: loan.amount > 0 ? Number(((totalPaid / loan.amount) * 100).toFixed(1)) : 0,
+            progress_percent: Number(getLoanProgress(loan, repayments).toFixed(1)),
           };
         })
       );
@@ -180,10 +193,14 @@ export default function Reports({
               </button>
             </div>
 
-            <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 sm:gap-6">
+            <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5 sm:gap-6">
               <div className="p-4 bg-gray-50 rounded-xl">
                 <p className="text-sm text-gray-500 mb-1">Total Disbursed</p>
                 <p className="text-2xl font-bold text-gray-800">{formatCurrency(totalDisbursed, currency)}</p>
+              </div>
+              <div className="p-4 bg-gray-50 rounded-xl">
+                <p className="text-sm text-gray-500 mb-1">Total Receivable</p>
+                <p className="text-2xl font-bold text-indigo-600">{formatCurrency(totalReceivable, currency)}</p>
               </div>
               <div className="p-4 bg-gray-50 rounded-xl">
                 <p className="text-sm text-gray-500 mb-1">Total Collected</p>
@@ -196,7 +213,7 @@ export default function Reports({
               <div className="p-4 bg-gray-50 rounded-xl">
                 <p className="text-sm text-gray-500 mb-1">Collection Rate</p>
                 <p className="text-2xl font-bold text-indigo-600">
-                  {totalDisbursed > 0 ? ((totalCollected / totalDisbursed) * 100).toFixed(1) : 0}%
+                  {totalReceivable > 0 ? ((totalCollected / totalReceivable) * 100).toFixed(1) : 0}%
                 </p>
               </div>
             </div>
@@ -248,7 +265,7 @@ export default function Reports({
 
             <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-3">
               <div className="p-6 bg-gray-50 rounded-xl">
-                <p className="text-sm text-gray-500 mb-1">Average Interest Rate</p>
+                <p className="text-sm text-gray-500 mb-1">Average Flat Interest Rate</p>
                 <p className="text-2xl font-bold text-gray-800">{avgInterestRate.toFixed(1)}%</p>
               </div>
               <div className="p-6 bg-gray-50 rounded-xl">
@@ -278,12 +295,13 @@ export default function Reports({
 
             <div className="overflow-x-auto">
               <div className="space-y-4 md:hidden">
-                {activeLoans.map((loan) => {
+                {outstandingLoans.map((loan) => {
                   const borrower = getBorrowerById(borrowers, getLoanBorrowerId(loan));
                   const loanRepayments = repayments.filter((repayment) => getRepaymentLoanId(repayment) === loan.id);
                   const totalPaid = loanRepayments.reduce((sum, repayment) => sum + repayment.amount, 0);
-                  const remaining = loan.amount - totalPaid;
-                  const progress = (totalPaid / loan.amount) * 100;
+                  const totalPayable = getLoanTotalPayable(loan);
+                  const remaining = getRemainingAmount(loan, repayments);
+                  const progress = getLoanProgress(loan, repayments);
 
                   return (
                     <div key={loan.id} className="rounded-xl bg-gray-50 p-4">
@@ -296,6 +314,10 @@ export default function Reports({
                       </div>
 
                       <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                        <div className="rounded-lg bg-white p-3">
+                          <p className="text-xs uppercase tracking-wide text-gray-400">Total Payable</p>
+                          <p className="mt-1 font-medium text-gray-800">{formatCurrency(totalPayable, currency)}</p>
+                        </div>
                         <div className="rounded-lg bg-white p-3">
                           <p className="text-xs uppercase tracking-wide text-gray-400">Paid</p>
                           <p className="mt-1 font-medium text-emerald-600">{formatCurrency(totalPaid, currency)}</p>
@@ -325,23 +347,26 @@ export default function Reports({
                   <tr>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Borrower</th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Loan Amount</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Total Payable</th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Total Paid</th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Remaining</th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Progress</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {activeLoans.map((loan) => {
+                  {outstandingLoans.map((loan) => {
                     const borrower = getBorrowerById(borrowers, getLoanBorrowerId(loan));
                     const loanRepayments = repayments.filter((repayment) => getRepaymentLoanId(repayment) === loan.id);
                     const totalPaid = loanRepayments.reduce((sum, repayment) => sum + repayment.amount, 0);
-                    const remaining = loan.amount - totalPaid;
-                    const progress = (totalPaid / loan.amount) * 100;
+                    const totalPayable = getLoanTotalPayable(loan);
+                    const remaining = getRemainingAmount(loan, repayments);
+                    const progress = getLoanProgress(loan, repayments);
 
                     return (
                       <tr key={loan.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 font-medium text-gray-800">{borrower?.name || 'Unknown'}</td>
                         <td className="px-6 py-4 text-gray-600">{formatCurrency(loan.amount, currency)}</td>
+                        <td className="px-6 py-4 text-gray-600">{formatCurrency(totalPayable, currency)}</td>
                         <td className="px-6 py-4 text-emerald-600 font-medium">{formatCurrency(totalPaid, currency)}</td>
                         <td className="px-6 py-4 text-amber-600 font-medium">{formatCurrency(remaining, currency)}</td>
                         <td className="px-6 py-4">

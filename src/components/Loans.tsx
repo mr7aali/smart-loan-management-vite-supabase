@@ -1,5 +1,14 @@
 import { Loan, Borrower, Repayment } from '../types';
-import { AppCurrency, formatCurrency, formatDate, getBorrowerById, getLoanProgress, getRemainingAmount } from '../utils';
+import {
+  AppCurrency,
+  formatCurrency,
+  formatDate,
+  getBorrowerById,
+  getLoanProgress,
+  getLoanTotalInterest,
+  getLoanTotalPayable,
+  getRemainingAmount,
+} from '../utils';
 import { Plus, Search, Trash2, Eye, FileText, DollarSign, Calendar, AlertTriangle } from 'lucide-react';
 import { useState } from 'react';
 
@@ -88,7 +97,9 @@ export default function Loans({ loans, borrowers, currency, repayments, onAdd, o
               const borrower = getBorrowerById(borrowers, loan.borrowerId);
               const progress = getLoanProgress(loan, repayments);
               const remaining = getRemainingAmount(loan, repayments);
-              const isOverdue = loan.status === 'active' && new Date(loan.dueDate) < new Date();
+              const isOverdue =
+                loan.status === 'overdue' ||
+                (loan.status === 'active' && new Date(loan.dueDate) < new Date());
 
               return (
                 <div key={loan.id} className="space-y-4 p-4">
@@ -127,8 +138,8 @@ export default function Loans({ loans, borrowers, currency, repayments, onAdd, o
                       <p className="mt-1 font-semibold text-amber-600">{formatCurrency(remaining, currency)}</p>
                     </div>
                     <div className="rounded-xl bg-gray-50 p-3">
-                      <p className="text-xs uppercase tracking-wide text-gray-400">Interest</p>
-                      <p className="mt-1 text-gray-700">{loan.interestRate}%</p>
+                      <p className="text-xs uppercase tracking-wide text-gray-400">Flat Interest</p>
+                      <p className="mt-1 text-gray-700">{loan.interestRate}% p.a.</p>
                     </div>
                     <div className="rounded-xl bg-gray-50 p-3">
                       <p className="text-xs uppercase tracking-wide text-gray-400">Term</p>
@@ -188,7 +199,7 @@ export default function Loans({ loans, borrowers, currency, repayments, onAdd, o
                 <tr>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Borrower</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Amount</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Interest</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Flat Interest</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Term</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Due Date</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Progress</th>
@@ -201,7 +212,9 @@ export default function Loans({ loans, borrowers, currency, repayments, onAdd, o
                   const borrower = getBorrowerById(borrowers, loan.borrowerId);
                   const progress = getLoanProgress(loan, repayments);
                   const remaining = getRemainingAmount(loan, repayments);
-                  const isOverdue = loan.status === 'active' && new Date(loan.dueDate) < new Date();
+                  const isOverdue =
+                    loan.status === 'overdue' ||
+                    (loan.status === 'active' && new Date(loan.dueDate) < new Date());
 
                   return (
                     <tr key={loan.id} className="hover:bg-gray-50 transition-colors">
@@ -225,7 +238,7 @@ export default function Loans({ loans, borrowers, currency, repayments, onAdd, o
                         <p className="font-semibold text-gray-800">{formatCurrency(loan.amount, currency)}</p>
                       </td>
                       <td className="px-6 py-4">
-                        <p className="text-gray-600">{loan.interestRate}%</p>
+                        <p className="text-gray-600">{loan.interestRate}% p.a.</p>
                       </td>
                       <td className="px-6 py-4">
                         <p className="text-gray-600">{loan.termMonths} months</p>
@@ -317,6 +330,8 @@ export default function Loans({ loans, borrowers, currency, repayments, onAdd, o
                 const loanRepayments = repayments.filter(r => r.loanId === selectedLoan.id);
                 const progress = getLoanProgress(selectedLoan, repayments);
                 const remaining = getRemainingAmount(selectedLoan, repayments);
+                const totalInterest = getLoanTotalInterest(selectedLoan);
+                const totalPayable = getLoanTotalPayable(selectedLoan);
 
                 return (
                   <>
@@ -336,12 +351,18 @@ export default function Loans({ loans, borrowers, currency, repayments, onAdd, o
                         <p className="text-2xl font-bold text-gray-800">{formatCurrency(selectedLoan.amount, currency)}</p>
                       </div>
                       <div className="p-4 bg-gray-50 rounded-xl">
+                        <p className="text-sm text-gray-500 mb-1">Total Payable</p>
+                        <p className="text-2xl font-bold text-indigo-600">{formatCurrency(totalPayable, currency)}</p>
+                      </div>
+                      <div className="p-4 bg-gray-50 rounded-xl">
                         <p className="text-sm text-gray-500 mb-1">Remaining</p>
                         <p className="text-2xl font-bold text-amber-600">{formatCurrency(remaining, currency)}</p>
                       </div>
                       <div className="p-4 bg-gray-50 rounded-xl">
-                        <p className="text-sm text-gray-500 mb-1">Interest Rate</p>
-                        <p className="text-xl font-bold text-gray-800">{selectedLoan.interestRate}%</p>
+                        <p className="text-sm text-gray-500 mb-1">Flat Interest</p>
+                        <p className="text-xl font-bold text-gray-800">
+                          {formatCurrency(totalInterest, currency)} ({selectedLoan.interestRate}% p.a.)
+                        </p>
                       </div>
                       <div className="p-4 bg-gray-50 rounded-xl">
                         <p className="text-sm text-gray-500 mb-1">Term</p>
@@ -361,7 +382,7 @@ export default function Loans({ loans, borrowers, currency, repayments, onAdd, o
                       <p className="text-sm text-gray-500 mb-2">Repayment Progress</p>
                       <div className="mb-2 flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-between">
                         <span className="text-gray-600">{progress.toFixed(1)}% complete</span>
-                        <span className="font-medium text-gray-800">{formatCurrency(selectedLoan.amount - remaining, currency)} / {formatCurrency(selectedLoan.amount, currency)}</span>
+                        <span className="font-medium text-gray-800">{formatCurrency(totalPayable - remaining, currency)} / {formatCurrency(totalPayable, currency)}</span>
                       </div>
                       <div className="h-4 bg-gray-100 rounded-full overflow-hidden">
                         <div

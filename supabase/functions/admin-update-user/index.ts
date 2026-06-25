@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
       throw new HttpError(400, "Invalid subscription plan provided.");
     }
 
-    await updateUserAccessAndSubscription({
+    const workspace = await updateUserAccessAndSubscription({
       actorUserId: adminUser.id,
       userId,
       role: body.role,
@@ -88,9 +88,9 @@ Deno.serve(async (req) => {
       admin
         .from("subscriptions")
         .select(
-          "user_id, plan, status, billing_cycle, price, start_date, end_date, updated_at",
+          "user_id, organization_id, plan, status, billing_cycle, price, start_date, end_date, updated_at",
         )
-        .eq("user_id", userId)
+        .eq("organization_id", workspace.id)
         .single(),
     ]);
 
