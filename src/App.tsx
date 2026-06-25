@@ -309,9 +309,17 @@ function App() {
           db.getRepayments(organizationId),
         ]);
 
+      const normalizedRepayments = (repaymentsResult.data || []).map(normalizeRepayment);
+      const normalizedLoans = (loansResult.data || []).map(normalizeLoan);
+
       setBorrowers((borrowersResult.data || []).map(normalizeBorrower));
-      setLoans((loansResult.data || []).map(normalizeLoan));
-      setRepayments((repaymentsResult.data || []).map(normalizeRepayment));
+      setRepayments(normalizedRepayments);
+      setLoans(
+        normalizedLoans.map((loan) => ({
+          ...loan,
+          status: getLoanStatus(loan, normalizedRepayments),
+        })),
+      );
     } catch (error) {
       console.error("Error loading data:", error);
     }
@@ -493,7 +501,6 @@ function App() {
       await Promise.all([
         loadData(nextWorkspace.id),
         loadSubscription(nextWorkspace.id),
-        loadWorkspaceActivity(nextWorkspace.id),
       ]);
     } else {
       setBorrowers([]);
@@ -627,7 +634,9 @@ function App() {
     const refreshUserData = () => {
       void loadData(workspace.id);
       void loadSubscription(workspace.id);
-      void loadWorkspaceActivity(workspace.id);
+      if (window.location.pathname.startsWith("/workspace/approvals")) {
+        void loadWorkspaceActivity(workspace.id);
+      }
     };
 
     const borrowersChannel = supabase
@@ -680,6 +689,21 @@ function App() {
   }, [workspace?.id]);
 
   useEffect(() => {
+    if (
+      !user?.id ||
+      !workspace?.id ||
+      !location.pathname.startsWith("/workspace/approvals")
+    ) {
+      return;
+    }
+
+    void loadWorkspaceActivity(workspace.id);
+    // loadWorkspaceActivity is recreated with workspace state; route/workspace
+    // changes are the intended triggers for this lazy audit-data fetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, user?.id, workspace?.id]);
+
+  useEffect(() => {
     if (!user?.id || !isAdmin) {
       return;
     }
@@ -711,14 +735,6 @@ function App() {
     try {
       const { data, error } = await auth.signUp(email, password, name);
 
-      if (
-        error?.message?.includes("rate") ||
-        error?.message?.includes("429") ||
-        error?.message?.includes("try again later")
-      ) {
-        throw new Error("Rate limit exceeded");
-      }
-
       if (error) throw error;
 
       if (data.user && !data.user.email_confirmed_at) {
@@ -729,9 +745,7 @@ function App() {
 
       return data;
     } catch (error: any) {
-      if (error.message !== "Rate limit exceeded") {
-        console.error("Signup error:", error);
-      }
+      console.error("Signup error:", error);
       throw error;
     }
   };
@@ -1607,9 +1621,7 @@ function App() {
                   element={
                     <Repayments
                       repayments={repayments}
-                      loans={approvedLoans.filter(
-                        (loan) => loan.status === "active",
-                      )}
+                      loans={approvedLoans}
                       borrowers={approvedBorrowers}
                       currency={activeCurrency}
                       onAdd={() => setShowAddRepayment(true)}
@@ -1786,8 +1798,9 @@ function App() {
 
         {showAddRepayment && (
           <AddRepaymentModal
-            loans={approvedLoans.filter((loan) => loan.status === "active")}
+            loans={approvedLoans.filter((loan) => loan.status !== "paid")}
             borrowers={approvedBorrowers}
+            repayments={repayments}
             currency={activeCurrency}
             onClose={() => setShowAddRepayment(false)}
             onAdd={handleAddRepayment}

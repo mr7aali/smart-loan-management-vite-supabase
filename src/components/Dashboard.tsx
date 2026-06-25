@@ -5,6 +5,8 @@ import {
   formatCurrency,
   formatDate,
   getLoanProgress,
+  getLoanTotalInterest,
+  getLoanTotalPayable,
   getRemainingAmount,
   getBorrowerById,
   getBorrowerName,
@@ -71,6 +73,10 @@ export default function Dashboard({
     r.loanId || r.loan_id || "";
 
   const totalDisbursed = loans.reduce((sum, l) => sum + getLoanAmount(l), 0);
+  const totalReceivable = loans.reduce(
+    (sum, loan) => sum + getLoanTotalPayable(loan),
+    0,
+  );
   const totalCollected = repayments.reduce((sum, r) => sum + r.amount, 0);
   const activeLoans = loans.filter((l) => l.status === "active");
   const overdueLoans = loans.filter((l) => {
@@ -78,11 +84,22 @@ export default function Dashboard({
     const dueDate = new Date(getLoanDueDate(l));
     return dueDate < new Date();
   });
-  const totalOutstanding = activeLoans.reduce((sum, l) => {
+  const totalOutstanding = loans
+    .filter((loan) => loan.status !== "paid")
+    .reduce(
+    (sum, loan) => sum + getRemainingAmount(loan, repayments),
+    0,
+  );
+  const interestCollected = loans.reduce((sum, loan) => {
+    const totalPayable = getLoanTotalPayable(loan);
+    const totalInterest = getLoanTotalInterest(loan);
     const paid = repayments
-      .filter((r) => getRepaymentLoanId(r) === l.id)
-      .reduce((s, r) => s + r.amount, 0);
-    return sum + (getLoanAmount(l) - paid);
+      .filter((repayment) => getRepaymentLoanId(repayment) === loan.id)
+      .reduce((paidSum, repayment) => paidSum + repayment.amount, 0);
+
+    return sum + (totalPayable > 0
+      ? Math.min((paid / totalPayable) * totalInterest, totalInterest)
+      : 0);
   }, 0);
 
   const stats = [
@@ -120,12 +137,12 @@ export default function Dashboard({
       title: "Collection Rate",
       mobileTitle: "Rate",
       value:
-        totalDisbursed > 0
-          ? `${((totalCollected / totalDisbursed) * 100).toFixed(1)}%`
+        totalReceivable > 0
+          ? `${((totalCollected / totalReceivable) * 100).toFixed(1)}%`
           : "0%",
       mobileValue:
-        totalDisbursed > 0
-          ? `${((totalCollected / totalDisbursed) * 100).toFixed(0)}%`
+        totalReceivable > 0
+          ? `${((totalCollected / totalReceivable) * 100).toFixed(0)}%`
           : "0%",
       change: "-2%",
       changeType: "negative" as const,
@@ -302,7 +319,13 @@ export default function Dashboard({
             </select>
           </div>
 
-          <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-6">
+          <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 sm:gap-6">
+            <div className="rounded-xl bg-gray-50 p-4">
+              <p className="mb-1 text-sm text-gray-500">Total Receivable</p>
+              <p className="text-2xl font-bold text-indigo-600">
+                {formatCurrency(totalReceivable, currency)}
+              </p>
+            </div>
             <div className="rounded-xl bg-gray-50 p-4">
               <p className="mb-1 text-sm text-gray-500">Total Disbursed</p>
               <p className="text-2xl font-bold text-gray-800">
@@ -328,8 +351,8 @@ export default function Dashboard({
             <div className="mb-2 flex justify-between text-sm">
               <span className="text-gray-600">Collection Progress</span>
               <span className="font-medium text-gray-800">
-                {totalDisbursed > 0
-                  ? ((totalCollected / totalDisbursed) * 100).toFixed(1)
+                {totalReceivable > 0
+                  ? ((totalCollected / totalReceivable) * 100).toFixed(1)
                   : 0}
                 %
               </span>
@@ -338,7 +361,7 @@ export default function Dashboard({
               <div
                 className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-1000"
                 style={{
-                  width: `${totalDisbursed > 0 ? (totalCollected / totalDisbursed) * 100 : 0}%`,
+                  width: `${totalReceivable > 0 ? Math.min((totalCollected / totalReceivable) * 100, 100) : 0}%`,
                 }}
               ></div>
             </div>
@@ -392,7 +415,7 @@ export default function Dashboard({
               </span>
             </div>
             <div className="flex flex-col gap-1 rounded-xl bg-gray-50 p-4 sm:flex-row sm:items-center sm:justify-between">
-              <span className="text-gray-600">Avg. Interest Rate</span>
+              <span className="text-gray-600">Avg. Flat Interest Rate</span>
               <span className="font-bold text-gray-800">
                 {avgInterestRate.toFixed(1)}%
               </span>
@@ -404,9 +427,9 @@ export default function Dashboard({
               </span>
             </div>
             <div className="flex flex-col gap-1 rounded-xl bg-gray-50 p-4 sm:flex-row sm:items-center sm:justify-between">
-              <span className="text-gray-600">Interest Earned</span>
+              <span className="text-gray-600">Interest Collected</span>
               <span className="font-bold text-purple-600">
-                {formatCurrency(totalCollected - totalDisbursed, currency)}
+                {formatCurrency(interestCollected, currency)}
               </span>
             </div>
           </div>

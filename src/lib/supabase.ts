@@ -13,6 +13,27 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+function normalizeAuthError(error: unknown) {
+  const authError = error as {
+    code?: string;
+    message?: string;
+    status?: number;
+  } | null;
+  const normalizedMessage = authError?.message?.toLowerCase() ?? '';
+
+  if (
+    authError?.code === 'over_email_send_rate_limit' ||
+    authError?.status === 429 ||
+    normalizedMessage.includes('email rate limit exceeded')
+  ) {
+    return new Error(
+      'Verification email limit reached. Please try again later. If you manage this app, configure custom SMTP in Supabase Authentication settings to raise the email limit.',
+    );
+  }
+
+  return error;
+}
+
 async function normalizeFunctionError(error: unknown) {
   const maybeContext = (error as { context?: unknown })?.context;
 
@@ -65,6 +86,14 @@ function isMissingColumnError(error: unknown, column: string) {
   );
 }
 
+function isMissingTableError(error: unknown, table: string) {
+  const maybeError = error as { code?: string; message?: string } | null;
+  return (
+    maybeError?.code === 'PGRST205' &&
+    Boolean(maybeError?.message?.includes(`public.${table}`))
+  );
+}
+
 // Auth helpers
 export const auth = {
   async signUp(email: string, password: string, name: string) {
@@ -77,6 +106,10 @@ export const auth = {
         },
       },
     });
+
+    if (error) {
+      return { data, error: normalizeAuthError(error) };
+    }
 
     if (!error && !data.session && data.user) {
       const identities = data.user.identities;
@@ -287,12 +320,18 @@ export const db = {
   },
 
   async getAuditEvents(organizationId: string) {
-    return supabase
+    const result = await supabase
       .from('audit_events')
       .select('*')
       .eq('organization_id', organizationId)
       .order('created_at', { ascending: false })
       .limit(100);
+
+    if (isMissingTableError(result.error, 'audit_events')) {
+      return { data: [], error: null };
+    }
+
+    return result;
   },
 
   async getProfilesByIds(userIds: string[]) {

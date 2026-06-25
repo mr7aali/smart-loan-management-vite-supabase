@@ -5,6 +5,7 @@ import {
   formatDate,
   getLoansByBorrower,
   getLoanProgress,
+  getLoanTotalPayable,
 } from "../utils";
 import {
   Plus,
@@ -102,8 +103,8 @@ export default function Borrowers({
         <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
           {filteredBorrowers.map((borrower) => {
             const borrowerLoans = getLoansByBorrower(loans, borrower.id);
-            const activeLoans = borrowerLoans.filter(
-              (l) => l.status === "active",
+            const outstandingLoans = borrowerLoans.filter(
+              (l) => l.status !== "paid",
             );
             const totalBorrowed = borrowerLoans.reduce(
               (sum, l) => sum + l.amount,
@@ -185,9 +186,9 @@ export default function Borrowers({
                   {/* Stats */}
                   <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-100">
                     <div>
-                      <p className="mb-1 text-xs text-gray-500">Active Loans</p>
+                      <p className="mb-1 text-xs text-gray-500">Outstanding Loans</p>
                       <p className="font-semibold text-gray-800">
-                        {activeLoans.length}
+                        {outstandingLoans.length}
                       </p>
                     </div>
                     <div>
@@ -201,12 +202,12 @@ export default function Borrowers({
                   </div>
 
                   {/* Loan Summary */}
-                  {activeLoans.length > 0 && (
+                  {outstandingLoans.length > 0 && (
                     <div className="pt-4 border-t border-gray-100">
                       <p className="mb-2 text-xs text-gray-500">
-                        Active Loan Progress
+                        Outstanding Loan Progress
                       </p>
-                      {activeLoans.slice(0, 1).map((loan) => (
+                      {outstandingLoans.slice(0, 1).map((loan) => (
                         <div key={loan.id} className="space-y-1">
                           <div className="flex justify-between text-sm">
                             <span className="text-gray-600">
@@ -344,8 +345,11 @@ export default function Borrowers({
                             </span>
                           </div>
                           <div className="flex flex-col gap-1 text-sm text-gray-500 sm:flex-row sm:gap-4">
-                            <span>Interest: {loan.interestRate}%</span>
+                            <span>Flat interest: {loan.interestRate}% p.a.</span>
                             <span>Term: {loan.termMonths} months</span>
+                            <span>
+                              Total payable: {formatCurrency(getLoanTotalPayable(loan), currency)}
+                            </span>
                           </div>
                         </div>
                       ),

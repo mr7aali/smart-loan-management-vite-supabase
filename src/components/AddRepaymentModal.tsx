@@ -17,11 +17,14 @@ import {
   getBorrowerName,
   getLoanBorrowerId,
   getLoanDueDate,
+  getLoanTotalPayable,
+  getRemainingAmount,
 } from '../utils';
 
 interface AddRepaymentModalProps {
   loans: Loan[];
   borrowers: Borrower[];
+  repayments: Repayment[];
   currency: AppCurrency;
   onClose: () => void;
   onAdd: (repayment: Omit<Repayment, 'id' | 'createdAt'>) => void;
@@ -34,7 +37,7 @@ const methods = [
   { value: 'other', label: 'Other', icon: ReceiptText },
 ] as const;
 
-export default function AddRepaymentModal({ loans, borrowers, currency, onClose, onAdd }: AddRepaymentModalProps) {
+export default function AddRepaymentModal({ loans, borrowers, repayments, currency, onClose, onAdd }: AddRepaymentModalProps) {
   const [formData, setFormData] = useState({
     loanId: '',
     amount: '',
@@ -45,12 +48,17 @@ export default function AddRepaymentModal({ loans, borrowers, currency, onClose,
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const selectedLoan = loans.find((loan) => loan.id === formData.loanId);
+  const selectedLoanRemaining = selectedLoan
+    ? getRemainingAmount(selectedLoan, repayments)
+    : 0;
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
     if (!formData.loanId) newErrors.loanId = 'Please select a loan';
     if (!formData.amount || parseFloat(formData.amount) <= 0) {
       newErrors.amount = 'Please enter a valid amount';
+    } else if (selectedLoan && parseFloat(formData.amount) > selectedLoanRemaining) {
+      newErrors.amount = `Payment cannot exceed the remaining balance of ${formatCurrency(selectedLoanRemaining, currency)}`;
     }
     if (!formData.date) newErrors.date = 'Please select a date';
     setErrors(newErrors);
@@ -115,7 +123,7 @@ export default function AddRepaymentModal({ loans, borrowers, currency, onClose,
 
                 return (
                   <option key={loan.id} value={loan.id}>
-                    {getBorrowerName(borrower)} - {formatCurrency(loan.amount, currency)} (Due: {formatDate(getLoanDueDate(loan))})
+                    {getBorrowerName(borrower)} - {formatCurrency(getRemainingAmount(loan, repayments), currency)} remaining (Due: {formatDate(getLoanDueDate(loan))})
                   </option>
                 );
               })}
@@ -125,8 +133,11 @@ export default function AddRepaymentModal({ loans, borrowers, currency, onClose,
 
           {selectedLoan && (
             <div className="p-4 bg-gray-50 rounded-xl">
-              <p className="text-sm text-gray-500 mb-1">Loan Amount</p>
-              <p className="text-xl font-bold text-gray-800">{formatCurrency(selectedLoan.amount, currency)}</p>
+              <p className="text-sm text-gray-500 mb-1">Remaining Balance</p>
+              <p className="text-xl font-bold text-gray-800">{formatCurrency(selectedLoanRemaining, currency)}</p>
+              <p className="mt-1 text-xs text-gray-500">
+                Total payable with flat interest: {formatCurrency(getLoanTotalPayable(selectedLoan), currency)}
+              </p>
               <p className="text-sm text-gray-500 mt-2">
                 Due Date: {formatDate(getLoanDueDate(selectedLoan))}
               </p>
@@ -145,6 +156,7 @@ export default function AddRepaymentModal({ loans, borrowers, currency, onClose,
                 onChange={(e) => handleChange('amount', e.target.value)}
                 placeholder="0.00"
                 min="0"
+                max={selectedLoanRemaining || undefined}
                 step="0.01"
                 className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors ${
                   errors.amount ? 'border-red-500' : 'border-gray-200'

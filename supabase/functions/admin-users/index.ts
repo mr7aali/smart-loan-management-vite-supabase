@@ -21,11 +21,13 @@ type ProfileRow = {
   plan: "free" | "starter" | "professional" | "enterprise";
   max_borrowers: number | null;
   max_loans: number | null;
+  current_organization_id: string | null;
   created_at: string;
 };
 
 type SubscriptionRow = {
   user_id: string;
+  organization_id: string;
   plan: "free" | "starter" | "professional" | "enterprise";
   status: "active" | "cancelled" | "expired";
   billing_cycle: "monthly" | "yearly";
@@ -67,13 +69,13 @@ Deno.serve(async (req) => {
       admin
         .from("profiles")
         .select(
-          "id, email, full_name, phone, role, account_status, plan, max_borrowers, max_loans, created_at",
+          "id, email, full_name, phone, role, account_status, plan, max_borrowers, max_loans, current_organization_id, created_at",
         )
         .order("created_at", { ascending: false }),
       admin
         .from("subscriptions")
         .select(
-          "user_id, plan, status, billing_cycle, price, start_date, end_date, updated_at",
+          "user_id, organization_id, plan, status, billing_cycle, price, start_date, end_date, updated_at",
         ),
       admin
         .from("payments")
@@ -90,9 +92,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    const subscriptionMap = new Map(
+    const subscriptionByOrganization = new Map(
       ((subscriptions ?? []) as SubscriptionRow[]).map((subscription) => [
-        subscription.user_id,
+        subscription.organization_id,
         subscription,
       ]),
     );
@@ -105,7 +107,9 @@ Deno.serve(async (req) => {
     }
 
     const users = ((profiles ?? []) as ProfileRow[]).map((profile) => {
-      const subscription = subscriptionMap.get(profile.id) ?? null;
+      const subscription = profile.current_organization_id
+        ? subscriptionByOrganization.get(profile.current_organization_id) ?? null
+        : null;
       const userPayments = paymentsByUser.get(profile.id) ?? [];
       const completedPayments = userPayments.filter(
         (payment) => payment.status === "completed",
