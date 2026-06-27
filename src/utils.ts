@@ -25,7 +25,7 @@ const roundMoney = (value: number): number =>
 
 export const calculateTotalInterest = (principal: number, rate: number, months: number): number => {
   if (principal <= 0 || rate <= 0 || months <= 0) return 0;
-  return roundMoney(principal * (rate / 100) * (months / 12));
+  return roundMoney(principal * (rate / 100));
 };
 
 export const calculateTotalPayable = (principal: number, rate: number, months: number): number => {

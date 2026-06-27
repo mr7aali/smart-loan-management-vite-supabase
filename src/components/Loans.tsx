@@ -139,7 +139,7 @@ export default function Loans({ loans, borrowers, currency, repayments, onAdd, o
                     </div>
                     <div className="rounded-xl bg-gray-50 p-3">
                       <p className="text-xs uppercase tracking-wide text-gray-400">Flat Interest</p>
-                      <p className="mt-1 text-gray-700">{loan.interestRate}% p.a.</p>
+                      <p className="mt-1 text-gray-700">{loan.interestRate}%</p>
                     </div>
                     <div className="rounded-xl bg-gray-50 p-3">
                       <p className="text-xs uppercase tracking-wide text-gray-400">Term</p>
@@ -238,7 +238,7 @@ export default function Loans({ loans, borrowers, currency, repayments, onAdd, o
                         <p className="font-semibold text-gray-800">{formatCurrency(loan.amount, currency)}</p>
                       </td>
                       <td className="px-6 py-4">
-                        <p className="text-gray-600">{loan.interestRate}% p.a.</p>
+                        <p className="text-gray-600">{loan.interestRate}%</p>
                       </td>
                       <td className="px-6 py-4">
                         <p className="text-gray-600">{loan.termMonths} months</p>
@@ -361,7 +361,7 @@ export default function Loans({ loans, borrowers, currency, repayments, onAdd, o
                       <div className="p-4 bg-gray-50 rounded-xl">
                         <p className="text-sm text-gray-500 mb-1">Flat Interest</p>
                         <p className="text-xl font-bold text-gray-800">
-                          {formatCurrency(totalInterest, currency)} ({selectedLoan.interestRate}% p.a.)
+                          {formatCurrency(totalInterest, currency)} ({selectedLoan.interestRate}%)
                         </p>
                       </div>
                       <div className="p-4 bg-gray-50 rounded-xl">

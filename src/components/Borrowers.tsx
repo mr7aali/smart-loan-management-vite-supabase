@@ -345,7 +345,7 @@ export default function Borrowers({
                             </span>
                           </div>
                           <div className="flex flex-col gap-1 text-sm text-gray-500 sm:flex-row sm:gap-4">
-                            <span>Flat interest: {loan.interestRate}% p.a.</span>
+                            <span>Flat interest: {loan.interestRate}%</span>
                             <span>Term: {loan.termMonths} months</span>
                             <span>
                               Total payable: {formatCurrency(getLoanTotalPayable(loan), currency)}

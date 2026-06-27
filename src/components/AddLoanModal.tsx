@@ -150,7 +150,7 @@ export default function AddLoanModal({ borrowers, currency, onClose, onAdd }: Ad
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Annual Flat Interest Rate (%) <span className="text-red-500">*</span>
+                Flat Interest Rate (%) <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <Percent className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -223,16 +223,16 @@ export default function AddLoanModal({ borrowers, currency, onClose, onAdd }: Ad
               <h4 className="font-semibold text-indigo-800 mb-3">Loan Summary</h4>
               <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
                 <div>
-                  <p className="text-indigo-600">Monthly Installment</p>
-                  <p className="font-bold text-indigo-900">{formatCurrency(emi, currency)}</p>
+                  <p className="text-indigo-600">Total Interest</p>
+                  <p className="font-bold text-indigo-900">{formatCurrency(totalInterest, currency)}</p>
                 </div>
                 <div>
                   <p className="text-indigo-600">Total Payable</p>
                   <p className="font-bold text-indigo-900">{formatCurrency(totalPayable, currency)}</p>
                 </div>
                 <div>
-                  <p className="text-indigo-600">Total Interest</p>
-                  <p className="font-bold text-indigo-900">{formatCurrency(totalInterest, currency)}</p>
+                  <p className="text-indigo-600">Monthly Installment</p>
+                  <p className="font-bold text-indigo-900">{formatCurrency(emi, currency)}</p>
                 </div>
                 <div>
                   <p className="text-indigo-600">Due Date</p>
