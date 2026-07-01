@@ -1,63 +1,68 @@
-import { useState } from 'react';
-import { Loan, Borrower } from '../types';
-import { X, FileText, DollarSign, Calendar, Percent } from 'lucide-react';
+import { useState } from "react";
+import { Loan, Borrower } from "../types";
+import { X, FileText, DollarSign, Calendar, Percent } from "lucide-react";
 import {
   AppCurrency,
   calculateEMI,
   calculateMonthlyFlatInterest,
   calculateTotalInterest,
   calculateTotalPayable,
-} from '../utils';
+} from "../utils";
 
 interface AddLoanModalProps {
   borrowers: Borrower[];
   currency: AppCurrency;
   onClose: () => void;
-  onAdd: (loan: Omit<Loan, 'id' | 'createdAt'>) => void;
+  onAdd: (loan: Omit<Loan, "id" | "createdAt">) => void;
 }
 
 const currencySymbols: Record<AppCurrency, string> = {
-  USD: '$',
-  EUR: '€',
-  ZAR: 'R',
-  LSL: 'M',
+  USD: "$",
+  EUR: "€",
+  ZAR: "R",
+  LSL: "M",
 };
 
-const currenciesWithoutSymbolSpacing = new Set<AppCurrency>(['USD', 'EUR']);
+const currenciesWithoutSymbolSpacing = new Set<AppCurrency>(["USD", "EUR"]);
 
 const roundCurrency = (value: number) =>
   Math.round((value + Number.EPSILON) * 100) / 100;
 
 const formatLoanCurrency = (value: number, currency: AppCurrency) => {
   const symbol = currencySymbols[currency];
-  const separator = currenciesWithoutSymbolSpacing.has(currency) ? '' : ' ';
+  const separator = currenciesWithoutSymbolSpacing.has(currency) ? "" : " ";
   return `${symbol}${separator}${roundCurrency(value).toFixed(2)}`;
 };
 
-export default function AddLoanModal({ borrowers, currency, onClose, onAdd }: AddLoanModalProps) {
+export default function AddLoanModal({
+  borrowers,
+  currency,
+  onClose,
+  onAdd,
+}: AddLoanModalProps) {
   const [formData, setFormData] = useState({
-    borrowerId: '',
-    amount: '',
-    interestRate: '10',
-    termMonths: '12',
-    startDate: new Date().toISOString().split('T')[0],
-    notes: '',
+    borrowerId: "",
+    amount: "",
+    interestRate: "10",
+    termMonths: "12",
+    startDate: new Date().toISOString().split("T")[0],
+    notes: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
-    if (!formData.borrowerId) newErrors.borrowerId = 'Please select a borrower';
+    if (!formData.borrowerId) newErrors.borrowerId = "Please select a borrower";
     if (!formData.amount || parseFloat(formData.amount) <= 0) {
-      newErrors.amount = 'Please enter a valid amount';
+      newErrors.amount = "Please enter a valid amount";
     }
     if (!formData.interestRate || parseFloat(formData.interestRate) < 0) {
-      newErrors.interestRate = 'Please enter a valid interest rate';
+      newErrors.interestRate = "Please enter a valid interest rate";
     }
     if (!formData.termMonths || parseInt(formData.termMonths) <= 0) {
-      newErrors.termMonths = 'Please enter a valid term';
+      newErrors.termMonths = "Please enter a valid term";
     }
-    if (!formData.startDate) newErrors.startDate = 'Please select a start date';
+    if (!formData.startDate) newErrors.startDate = "Please select a start date";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -78,8 +83,8 @@ export default function AddLoanModal({ borrowers, currency, onClose, onAdd }: Ad
         interestRate: rate,
         termMonths: months,
         startDate: formData.startDate,
-        dueDate: dueDate.toISOString().split('T')[0],
-        status: 'active',
+        dueDate: dueDate.toISOString().split("T")[0],
+        status: "active",
         notes: formData.notes || undefined,
       });
     }
@@ -88,7 +93,7 @@ export default function AddLoanModal({ borrowers, currency, onClose, onAdd }: Ad
   const handleChange = (field: string, value: string) => {
     setFormData({ ...formData, [field]: value });
     if (errors[field]) {
-      setErrors({ ...errors, [field]: '' });
+      setErrors({ ...errors, [field]: "" });
     }
   };
 
@@ -150,13 +155,15 @@ export default function AddLoanModal({ borrowers, currency, onClose, onAdd }: Ad
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 sm:h-10 sm:w-10">
               <FileText className="h-5 w-5 text-white" />
             </div>
-            <h2 className="text-lg font-bold text-gray-800 sm:text-xl">Create New Loan</h2>
+            <h2 className="text-lg font-bold text-gray-800 sm:text-xl">
+              Create New Loan
+            </h2>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="rounded-lg p-2 transition-colors hover:bg-gray-100"
           >
-            <X className="w-5 h-5 text-gray-500" />
+            <X className="h-5 w-5 text-gray-500" />
           </button>
         </div>
 
@@ -164,14 +171,14 @@ export default function AddLoanModal({ borrowers, currency, onClose, onAdd }: Ad
         <form onSubmit={handleSubmit} className="space-y-4 p-4 sm:p-6">
           {/* Borrower */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="mb-1 block text-sm font-medium text-gray-700">
               Borrower <span className="text-red-500">*</span>
             </label>
             <select
               value={formData.borrowerId}
-              onChange={(e) => handleChange('borrowerId', e.target.value)}
+              onChange={(e) => handleChange("borrowerId", e.target.value)}
               className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors ${
-                errors.borrowerId ? 'border-red-500' : 'border-gray-200'
+                errors.borrowerId ? "border-red-500" : "border-gray-200"
               }`}
             >
               <option value="">Select a borrower</option>
@@ -181,99 +188,113 @@ export default function AddLoanModal({ borrowers, currency, onClose, onAdd }: Ad
                 </option>
               ))}
             </select>
-            {errors.borrowerId && <p className="text-red-500 text-sm mt-1">{errors.borrowerId}</p>}
+            {errors.borrowerId && (
+              <p className="mt-1 text-sm text-red-500">{errors.borrowerId}</p>
+            )}
           </div>
 
           {/* Loan Amount */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="mb-1 block text-sm font-medium text-gray-700">
               Loan Amount <span className="text-red-500">*</span>
             </label>
             <div className="relative">
-              <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <DollarSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <input
                 type="number"
                 value={formData.amount}
-                onChange={(e) => handleChange('amount', e.target.value)}
+                onChange={(e) => handleChange("amount", e.target.value)}
                 placeholder="0.00"
                 min="0"
                 step="0.01"
                 className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors ${
-                  errors.amount ? 'border-red-500' : 'border-gray-200'
+                  errors.amount ? "border-red-500" : "border-gray-200"
                 }`}
               />
             </div>
-            {errors.amount && <p className="text-red-500 text-sm mt-1">{errors.amount}</p>}
+            {errors.amount && (
+              <p className="mt-1 text-sm text-red-500">{errors.amount}</p>
+            )}
           </div>
 
           {/* Interest Rate & Term */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="mb-1 block text-sm font-medium text-gray-700">
                 Flat Interest Rate (%) <span className="text-red-500">*</span>
               </label>
               <div className="relative">
-                <Percent className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Percent className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                 <input
                   type="number"
                   value={formData.interestRate}
-                  onChange={(e) => handleChange('interestRate', e.target.value)}
+                  onChange={(e) => handleChange("interestRate", e.target.value)}
                   placeholder="10"
                   min="0"
                   step="0.1"
                   className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors ${
-                    errors.interestRate ? 'border-red-500' : 'border-gray-200'
+                    errors.interestRate ? "border-red-500" : "border-gray-200"
                   }`}
                 />
               </div>
-              {errors.interestRate && <p className="text-red-500 text-sm mt-1">{errors.interestRate}</p>}
+              {errors.interestRate && (
+                <p className="mt-1 text-sm text-red-500">
+                  {errors.interestRate}
+                </p>
+              )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="mb-1 block text-sm font-medium text-gray-700">
                 Term (Months) <span className="text-red-500">*</span>
               </label>
               <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                 <input
                   type="number"
                   value={formData.termMonths}
-                  onChange={(e) => handleChange('termMonths', e.target.value)}
+                  onChange={(e) => handleChange("termMonths", e.target.value)}
                   placeholder="12"
                   min="1"
                   className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors ${
-                    errors.termMonths ? 'border-red-500' : 'border-gray-200'
+                    errors.termMonths ? "border-red-500" : "border-gray-200"
                   }`}
                 />
               </div>
-              {errors.termMonths && <p className="text-red-500 text-sm mt-1">{errors.termMonths}</p>}
+              {errors.termMonths && (
+                <p className="mt-1 text-sm text-red-500">{errors.termMonths}</p>
+              )}
             </div>
           </div>
 
           {/* Start Date */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="mb-1 block text-sm font-medium text-gray-700">
               Start Date <span className="text-red-500">*</span>
             </label>
             <input
               type="date"
               value={formData.startDate}
-              onChange={(e) => handleChange('startDate', e.target.value)}
+              onChange={(e) => handleChange("startDate", e.target.value)}
               className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors ${
-                errors.startDate ? 'border-red-500' : 'border-gray-200'
+                errors.startDate ? "border-red-500" : "border-gray-200"
               }`}
             />
-            {errors.startDate && <p className="text-red-500 text-sm mt-1">{errors.startDate}</p>}
+            {errors.startDate && (
+              <p className="mt-1 text-sm text-red-500">{errors.startDate}</p>
+            )}
           </div>
 
           {/* Notes */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Notes
+            </label>
             <textarea
               value={formData.notes}
-              onChange={(e) => handleChange('notes', e.target.value)}
+              onChange={(e) => handleChange("notes", e.target.value)}
               placeholder="Additional notes about this loan..."
               rows={2}
-              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors resize-none"
+              className="w-full resize-none rounded-lg border border-gray-200 px-4 py-2 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
 
@@ -281,15 +302,24 @@ export default function AddLoanModal({ borrowers, currency, onClose, onAdd }: Ad
           {amount > 0 && months > 0 && (
             <div className="space-y-4">
               <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-4">
-                <h4 className="mb-3 font-semibold text-indigo-800">Loan Breakdown</h4>
+                <h4 className="mb-3 font-semibold text-indigo-800">
+                  Loan Breakdown
+                </h4>
                 <div className="space-y-2 text-sm text-indigo-950">
                   <div className="flex items-center justify-between gap-4">
                     <span>Principal (Loan Amount)</span>
-                    <span className="font-semibold">{formatLoanCurrency(amount, currency)}</span>
+                    <span className="font-semibold">
+                      {formatLoanCurrency(amount, currency)}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between gap-4">
-                    <span>Monthly Interest ({rate}% of {roundCurrency(amount).toFixed(0)})</span>
-                    <span className="font-semibold">{formatLoanCurrency(monthlyInterest, currency)}</span>
+                    <span>
+                      Monthly Interest ({rate}% of{" "}
+                      {roundCurrency(amount).toFixed(0)})
+                    </span>
+                    <span className="font-semibold">
+                      {formatLoanCurrency(monthlyInterest, currency)}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between gap-4">
                     <span>Number of Months</span>
@@ -297,7 +327,9 @@ export default function AddLoanModal({ borrowers, currency, onClose, onAdd }: Ad
                   </div>
                   <div className="my-3 border-t border-indigo-200" />
                   <div className="flex items-center justify-between gap-4 font-semibold text-indigo-700">
-                    <span>Total Interest ({monthlyInterest.toFixed(2)} × {months})</span>
+                    <span>
+                      Total Interest ({monthlyInterest.toFixed(2)} × {months})
+                    </span>
                     <span>{formatLoanCurrency(totalInterest, currency)}</span>
                   </div>
                   <div className="flex items-center justify-between gap-4 font-semibold text-indigo-700">
@@ -312,22 +344,35 @@ export default function AddLoanModal({ borrowers, currency, onClose, onAdd }: Ad
               </div>
 
               <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-4">
-                <h4 className="mb-3 font-semibold text-indigo-800">Repayment Schedule</h4>
+                <h4 className="mb-3 font-semibold text-indigo-800">
+                  Repayment Schedule
+                </h4>
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[440px] text-left text-xs">
                     <thead className="text-indigo-700">
                       <tr className="border-b border-indigo-200">
                         <th className="py-2 font-semibold">Month</th>
-                        <th className="py-2 text-right font-semibold">Principal ({currencySymbol})</th>
-                        <th className="py-2 text-right font-semibold">Interest ({currencySymbol})</th>
-                        <th className="py-2 text-right font-semibold">Total Due ({currencySymbol})</th>
-                        <th className="py-2 text-right font-semibold">Balance ({currencySymbol})</th>
+                        <th className="py-2 text-right font-semibold">
+                          Principal ({currencySymbol})
+                        </th>
+                        <th className="py-2 text-right font-semibold">
+                          Interest ({currencySymbol})
+                        </th>
+                        <th className="py-2 text-right font-semibold">
+                          Total Due ({currencySymbol})
+                        </th>
+                        <th className="py-2 text-right font-semibold">
+                          Balance ({currencySymbol})
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="font-medium text-gray-900">
-                      {visibleSchedule.map((row, index) => (
-                        'isEllipsis' in row ? (
-                          <tr key={`ellipsis-${index}`} className="text-gray-500">
+                      {visibleSchedule.map((row, index) =>
+                        "isEllipsis" in row ? (
+                          <tr
+                            key={`ellipsis-${index}`}
+                            className="text-gray-500"
+                          >
                             <td className="py-2 text-center">...</td>
                             <td className="py-2 text-right">...</td>
                             <td className="py-2 text-right">...</td>
@@ -337,37 +382,53 @@ export default function AddLoanModal({ borrowers, currency, onClose, onAdd }: Ad
                         ) : (
                           <tr key={row.month}>
                             <td className="py-2 text-center">{row.month}</td>
-                            <td className="py-2 text-right">{row.principal.toFixed(2)}</td>
-                            <td className="py-2 text-right">{row.interest.toFixed(2)}</td>
-                            <td className="py-2 text-right">{row.totalDue.toFixed(2)}</td>
-                            <td className="py-2 text-right">{row.balance.toFixed(2)}</td>
+                            <td className="py-2 text-right">
+                              {row.principal.toFixed(2)}
+                            </td>
+                            <td className="py-2 text-right">
+                              {row.interest.toFixed(2)}
+                            </td>
+                            <td className="py-2 text-right">
+                              {row.totalDue.toFixed(2)}
+                            </td>
+                            <td className="py-2 text-right">
+                              {row.balance.toFixed(2)}
+                            </td>
                           </tr>
-                        )
-                      ))}
+                        ),
+                      )}
                     </tbody>
                   </table>
                 </div>
               </div>
 
               <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-4">
-                <h4 className="mb-3 font-semibold text-indigo-800">Loan Summary</h4>
+                <h4 className="mb-3 font-semibold text-indigo-800">
+                  Loan Summary
+                </h4>
                 <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
                   <div>
                     <p className="text-indigo-600">Total Interest</p>
-                    <p className="font-bold text-indigo-900">{formatLoanCurrency(totalInterest, currency)}</p>
+                    <p className="font-bold text-indigo-900">
+                      {formatLoanCurrency(totalInterest, currency)}
+                    </p>
                   </div>
                   <div>
                     <p className="text-indigo-600">Total Payable</p>
-                    <p className="font-bold text-indigo-900">{formatLoanCurrency(totalPayable, currency)}</p>
+                    <p className="font-bold text-indigo-900">
+                      {formatLoanCurrency(totalPayable, currency)}
+                    </p>
                   </div>
                   <div>
                     <p className="text-indigo-600">Monthly Installment</p>
-                    <p className="font-bold text-indigo-900">{formatLoanCurrency(emi, currency)}</p>
+                    <p className="font-bold text-indigo-900">
+                      {formatLoanCurrency(emi, currency)}
+                    </p>
                   </div>
                   <div>
                     <p className="text-indigo-600">Due Date (Final)</p>
                     <p className="font-bold text-indigo-900">
-                      {dueDate ? dueDate.toLocaleDateString() : '-'}
+                      {dueDate ? dueDate.toLocaleDateString() : "-"}
                     </p>
                   </div>
                 </div>
@@ -380,13 +441,13 @@ export default function AddLoanModal({ borrowers, currency, onClose, onAdd }: Ad
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              className="flex-1 rounded-lg border border-gray-200 px-4 py-2 text-gray-700 transition-colors hover:bg-gray-50"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+              className="flex-1 rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white transition-colors hover:bg-indigo-700"
             >
               Create Loan
             </button>
