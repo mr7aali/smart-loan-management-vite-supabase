@@ -24,20 +24,20 @@ interface FAQItemProps {
 
 function FAQItem({ question, answer, isOpen, onClick }: FAQItemProps) {
   return (
-    <div className="overflow-hidden border border-gray-200 rounded-xl">
+    <div className="overflow-hidden rounded-xl border border-gray-200">
       <button
         onClick={onClick}
-        className="flex items-start justify-between w-full gap-3 p-4 text-left transition-colors bg-white hover:bg-gray-50 sm:p-5"
+        className="flex w-full items-start justify-between gap-3 bg-white p-4 text-left transition-colors hover:bg-gray-50 sm:p-5"
       >
         <span className="font-semibold text-gray-800">{question}</span>
         {isOpen ? (
-          <ChevronUp className="flex-shrink-0 w-5 h-5 text-gray-400" />
+          <ChevronUp className="h-5 w-5 flex-shrink-0 text-gray-400" />
         ) : (
-          <ChevronDown className="flex-shrink-0 w-5 h-5 text-gray-400" />
+          <ChevronDown className="h-5 w-5 flex-shrink-0 text-gray-400" />
         )}
       </button>
       {isOpen && (
-        <div className="p-4 border-t border-gray-200 bg-gray-50 sm:p-5">
+        <div className="border-t border-gray-200 bg-gray-50 p-4 sm:p-5">
           <p className="leading-relaxed text-gray-600">{answer}</p>
         </div>
       )}
@@ -63,7 +63,7 @@ export default function Help() {
     {
       question: "How do I record a new loan?",
       answer:
-        "Go to the Loans section and click 'Create Loan'. Select the borrower, then enter the principal, flat interest rate, term, and start date. Interest is calculated once as principal x flat rate, then the total payable is divided by the term to show the monthly installment.",
+        "Go to the Loans section and click 'Create Loan'. Select the borrower, then enter the principal, flat interest rate, term, and start date. Interest is calculated monthly as principal × rate, then multiplied by the number of months. The app shows the loan breakdown, repayment schedule, monthly installment, and total payable automatically.",
     },
     {
       question: "How do I record repayments?",
@@ -170,9 +170,9 @@ export default function Help() {
 
   return (
     <div className="space-y-6 sm:space-y-8">
-      <div className="p-6 text-white rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 sm:p-8">
-        <div className="flex items-center gap-3 mb-4">
-          <HelpCircle className="w-8 h-8" />
+      <div className="rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 p-6 text-white sm:p-8">
+        <div className="mb-4 flex items-center gap-3">
+          <HelpCircle className="h-8 w-8" />
           <h1 className="text-2xl font-bold sm:text-3xl">Help Center</h1>
         </div>
         <p className="max-w-2xl text-base text-indigo-100 sm:text-lg">
@@ -181,25 +181,25 @@ export default function Help() {
         </p>
       </div>
 
-      <div className="overflow-hidden bg-white border border-indigo-100 shadow-sm rounded-2xl">
+      <div className="overflow-hidden rounded-2xl border border-indigo-100 bg-white shadow-sm">
         <div className="grid grid-cols-1 gap-0 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="p-5 sm:p-6 lg:p-8">
-            <div className="inline-flex items-center gap-2 px-3 py-1 text-sm font-medium text-indigo-700 rounded-full bg-indigo-50">
-              <Video className="w-4 h-4" />
+            <div className="inline-flex items-center gap-2 rounded-full bg-indigo-50 px-3 py-1 text-sm font-medium text-indigo-700">
+              <Video className="h-4 w-4" />
               Video walkthrough
             </div>
             <h2 className="mt-4 text-2xl font-bold text-gray-900 sm:text-3xl">
               Watch how LendSmart works
             </h2>
-            <p className="max-w-xl mt-3 text-sm leading-relaxed text-gray-600 sm:text-base">
+            <p className="mt-3 max-w-xl text-sm leading-relaxed text-gray-600 sm:text-base">
               If you want a faster overview, this short video walks through the
               main workflow for managing borrowers, loans, repayments, and
               reports inside the app.
             </p>
-            <div className="flex flex-wrap gap-3 mt-5">
+            <div className="mt-5 flex flex-wrap gap-3">
               <a
                 href="#faq"
-                className="px-4 py-2 text-sm font-semibold text-white transition bg-indigo-600 rounded-full hover:bg-indigo-700"
+                className="rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
               >
                 Read the FAQ
               </a>
@@ -207,19 +207,19 @@ export default function Help() {
                 href="https://youtu.be/w8v5jvjAx7k"
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-gray-700 transition border border-gray-200 rounded-full hover:border-indigo-200 hover:text-indigo-700"
+                className="inline-flex items-center gap-2 rounded-full border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 transition hover:border-indigo-200 hover:text-indigo-700"
               >
                 Open on YouTube
-                <ExternalLink className="w-4 h-4" />
+                <ExternalLink className="h-4 w-4" />
               </a>
             </div>
           </div>
 
-          <div className="p-3 bg-slate-950 sm:p-4 lg:p-5">
-            <div className="overflow-hidden bg-black border shadow-2xl rounded-2xl border-white/10">
+          <div className="bg-slate-950 p-3 sm:p-4 lg:p-5">
+            <div className="overflow-hidden rounded-2xl border border-white/10 bg-black shadow-2xl">
               <div className="aspect-video">
                 <iframe
-                  className="w-full h-full"
+                  className="h-full w-full"
                   src="https://www.youtube.com/embed/w8v5jvjAx7k?rel=0"
                   title="LendSmart help video walkthrough"
                   loading="lazy"
@@ -240,10 +240,10 @@ export default function Help() {
             <a
               key={guide.id}
               href={`#${guide.id}`}
-              className="p-5 transition-all bg-white border border-gray-200 group rounded-xl hover:border-indigo-200 hover:shadow-lg sm:p-6"
+              className="group rounded-xl border border-gray-200 bg-white p-5 transition-all hover:border-indigo-200 hover:shadow-lg sm:p-6"
             >
-              <div className="flex items-center justify-center w-12 h-12 mb-4 transition-colors bg-indigo-100 rounded-xl group-hover:bg-indigo-200">
-                <Icon className="w-6 h-6 text-indigo-600" />
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-100 transition-colors group-hover:bg-indigo-200">
+                <Icon className="h-6 w-6 text-indigo-600" />
               </div>
               <h3 className="mb-1 font-bold text-gray-800">{guide.title}</h3>
               <p className="text-sm text-gray-500">{guide.description}</p>
@@ -252,9 +252,9 @@ export default function Help() {
         })}
       </div>
 
-      <div className="p-5 bg-white border border-gray-100 rounded-2xl sm:p-8">
-        <div className="flex items-center gap-3 mb-6">
-          <Book className="w-6 h-6 text-indigo-600" />
+      <div className="rounded-2xl border border-gray-100 bg-white p-5 sm:p-8">
+        <div className="mb-6 flex items-center gap-3">
+          <Book className="h-6 w-6 text-indigo-600" />
           <h2 className="text-xl font-bold text-gray-800 sm:text-2xl">
             Quick Guides
           </h2>
@@ -264,7 +264,7 @@ export default function Help() {
             <div
               key={guide.id}
               id={guide.id}
-              className="p-4 border border-gray-200 scroll-mt-24 rounded-xl bg-gray-50 sm:p-5"
+              className="scroll-mt-24 rounded-xl border border-gray-200 bg-gray-50 p-4 sm:p-5"
             >
               <h3 className="mb-2 font-semibold text-gray-800">
                 {guide.title}
@@ -279,8 +279,8 @@ export default function Help() {
 
       <div className="grid grid-cols-1 gap-6 sm:gap-8 lg:grid-cols-3">
         <div className="lg:col-span-2" id="faq">
-          <div className="flex items-center gap-3 mb-6">
-            <Book className="w-6 h-6 text-indigo-600" />
+          <div className="mb-6 flex items-center gap-3">
+            <Book className="h-6 w-6 text-indigo-600" />
             <h2 className="text-xl font-bold text-gray-800 sm:text-2xl">
               Frequently Asked Questions
             </h2>
@@ -299,8 +299,8 @@ export default function Help() {
         </div>
 
         <div id="support">
-          <div className="flex items-center gap-3 mb-6">
-            <Zap className="w-6 h-6 text-amber-500" />
+          <div className="mb-6 flex items-center gap-3">
+            <Zap className="h-6 w-6 text-amber-500" />
             <h2 className="text-xl font-bold text-gray-800 sm:text-2xl">
               Contact Support
             </h2>
@@ -316,11 +316,11 @@ export default function Help() {
                   href={option.link}
                   target={opensInNewTab ? "_blank" : undefined}
                   rel={opensInNewTab ? "noreferrer" : undefined}
-                  className="block p-4 transition-all bg-white border border-gray-200 rounded-xl hover:border-indigo-200 hover:shadow-md sm:p-5"
+                  className="block rounded-xl border border-gray-200 bg-white p-4 transition-all hover:border-indigo-200 hover:shadow-md sm:p-5"
                 >
                   <div className="flex items-start gap-4">
-                    <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-amber-100">
-                      <Icon className="w-5 h-5 text-amber-600" />
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100">
+                      <Icon className="h-5 w-5 text-amber-600" />
                     </div>
                     <div className="flex-1">
                       <h3 className="font-semibold text-gray-800">
@@ -330,16 +330,16 @@ export default function Help() {
                         {option.description}
                       </p>
                     </div>
-                    <ExternalLink className="w-4 h-4 text-gray-400" />
+                    <ExternalLink className="h-4 w-4 text-gray-400" />
                   </div>
                 </a>
               );
             })}
           </div>
 
-          <div className="p-4 mt-6 border rounded-xl border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 sm:p-5">
-            <div className="flex items-center gap-2 mb-2">
-              <Zap className="w-5 h-5 text-amber-600" />
+          <div className="mt-6 rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-4 sm:p-5">
+            <div className="mb-2 flex items-center gap-2">
+              <Zap className="h-5 w-5 text-amber-600" />
               <span className="font-bold text-amber-800">Pro Tip</span>
             </div>
             <p className="text-sm text-amber-700">
@@ -350,7 +350,7 @@ export default function Help() {
         </div>
       </div>
 
-      <div className="p-4 text-sm text-center text-gray-500 bg-gray-100 rounded-xl">
+      <div className="rounded-xl bg-gray-100 p-4 text-center text-sm text-gray-500">
         LendSmart v1.0.0 | Build {new Date().toLocaleDateString()} |
         <a href="#faq" className="ml-1 text-indigo-600 hover:underline">
           Jump to FAQ
