@@ -63,7 +63,7 @@ export default function Help() {
     {
       question: "How do I record a new loan?",
       answer:
-        "Go to the Loans section and click 'Create Loan'. Select the borrower, then enter the principal, annual flat interest rate, term, and start date. Interest is calculated as principal × annual rate × (months ÷ 12), and the app shows the monthly installment and total payable automatically.",
+        "Go to the Loans section and click 'Create Loan'. Select the borrower, then enter the principal, flat interest rate, term, and start date. Interest is calculated monthly as principal × rate, then multiplied by the number of months. The app shows the loan breakdown, repayment schedule, monthly installment, and total payable automatically.",
     },
     {
       question: "How do I record repayments?",

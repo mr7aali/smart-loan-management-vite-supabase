@@ -4,9 +4,9 @@ import { X, FileText, DollarSign, Calendar, Percent } from 'lucide-react';
 import {
   AppCurrency,
   calculateEMI,
+  calculateMonthlyFlatInterest,
   calculateTotalInterest,
   calculateTotalPayable,
-  formatCurrency,
 } from '../utils';
 
 interface AddLoanModalProps {
@@ -15,6 +15,24 @@ interface AddLoanModalProps {
   onClose: () => void;
   onAdd: (loan: Omit<Loan, 'id' | 'createdAt'>) => void;
 }
+
+const currencySymbols: Record<AppCurrency, string> = {
+  USD: '$',
+  EUR: '€',
+  ZAR: 'R',
+  LSL: 'M',
+};
+
+const currenciesWithoutSymbolSpacing = new Set<AppCurrency>(['USD', 'EUR']);
+
+const roundCurrency = (value: number) =>
+  Math.round((value + Number.EPSILON) * 100) / 100;
+
+const formatLoanCurrency = (value: number, currency: AppCurrency) => {
+  const symbol = currencySymbols[currency];
+  const separator = currenciesWithoutSymbolSpacing.has(currency) ? '' : ' ';
+  return `${symbol}${separator}${roundCurrency(value).toFixed(2)}`;
+};
 
 export default function AddLoanModal({ borrowers, currency, onClose, onAdd }: AddLoanModalProps) {
   const [formData, setFormData] = useState({
@@ -78,8 +96,50 @@ export default function AddLoanModal({ borrowers, currency, onClose, onAdd }: Ad
   const rate = parseFloat(formData.interestRate) || 0;
   const months = parseInt(formData.termMonths) || 0;
   const emi = calculateEMI(amount, rate, months);
+  const monthlyInterest = calculateMonthlyFlatInterest(amount, rate);
   const totalInterest = calculateTotalInterest(amount, rate, months);
   const totalPayable = calculateTotalPayable(amount, rate, months);
+  const currencySymbol = currencySymbols[currency];
+  const dueDate = (() => {
+    if (!formData.startDate || months <= 0) return null;
+    const startDate = new Date(formData.startDate);
+    if (Number.isNaN(startDate.getTime())) return null;
+    const finalDueDate = new Date(startDate);
+    finalDueDate.setMonth(finalDueDate.getMonth() + months);
+    return finalDueDate;
+  })();
+  const repaymentSchedule = (() => {
+    if (amount <= 0 || months <= 0) return [];
+
+    let remainingPrincipal = amount;
+    return Array.from({ length: months }, (_, index) => {
+      const monthNumber = index + 1;
+      const isFinalMonth = monthNumber === months;
+      const principalDue = isFinalMonth
+        ? roundCurrency(remainingPrincipal)
+        : roundCurrency(amount / months);
+      remainingPrincipal = Math.max(
+        roundCurrency(remainingPrincipal - principalDue),
+        0,
+      );
+
+      return {
+        month: monthNumber,
+        principal: principalDue,
+        interest: monthlyInterest,
+        totalDue: roundCurrency(principalDue + monthlyInterest),
+        balance: remainingPrincipal,
+      };
+    });
+  })();
+  const visibleSchedule =
+    repaymentSchedule.length > 7
+      ? [
+          ...repaymentSchedule.slice(0, 5),
+          { isEllipsis: true },
+          repaymentSchedule[repaymentSchedule.length - 1],
+        ]
+      : repaymentSchedule;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black bg-opacity-50 p-4 sm:items-center">
@@ -150,7 +210,7 @@ export default function AddLoanModal({ borrowers, currency, onClose, onAdd }: Ad
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Annual Flat Interest Rate (%) <span className="text-red-500">*</span>
+                Flat Interest Rate (%) <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <Percent className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -217,28 +277,99 @@ export default function AddLoanModal({ borrowers, currency, onClose, onAdd }: Ad
             />
           </div>
 
-          {/* Loan Summary */}
+          {/* Loan Breakdown */}
           {amount > 0 && months > 0 && (
-            <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100">
-              <h4 className="font-semibold text-indigo-800 mb-3">Loan Summary</h4>
-              <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
-                <div>
-                  <p className="text-indigo-600">Monthly Installment</p>
-                  <p className="font-bold text-indigo-900">{formatCurrency(emi, currency)}</p>
+            <div className="space-y-4">
+              <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-4">
+                <h4 className="mb-3 font-semibold text-indigo-800">Loan Breakdown</h4>
+                <div className="space-y-2 text-sm text-indigo-950">
+                  <div className="flex items-center justify-between gap-4">
+                    <span>Principal (Loan Amount)</span>
+                    <span className="font-semibold">{formatLoanCurrency(amount, currency)}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-4">
+                    <span>Monthly Interest ({rate}% of {roundCurrency(amount).toFixed(0)})</span>
+                    <span className="font-semibold">{formatLoanCurrency(monthlyInterest, currency)}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-4">
+                    <span>Number of Months</span>
+                    <span className="font-semibold">{months}</span>
+                  </div>
+                  <div className="my-3 border-t border-indigo-200" />
+                  <div className="flex items-center justify-between gap-4 font-semibold text-indigo-700">
+                    <span>Total Interest ({monthlyInterest.toFixed(2)} × {months})</span>
+                    <span>{formatLoanCurrency(totalInterest, currency)}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-4 font-semibold text-indigo-700">
+                    <span>Total Payable</span>
+                    <span>{formatLoanCurrency(totalPayable, currency)}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-4 font-semibold text-indigo-700">
+                    <span>Monthly Installment</span>
+                    <span>{formatLoanCurrency(emi, currency)}</span>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-indigo-600">Total Payable</p>
-                  <p className="font-bold text-indigo-900">{formatCurrency(totalPayable, currency)}</p>
+              </div>
+
+              <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-4">
+                <h4 className="mb-3 font-semibold text-indigo-800">Repayment Schedule</h4>
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[440px] text-left text-xs">
+                    <thead className="text-indigo-700">
+                      <tr className="border-b border-indigo-200">
+                        <th className="py-2 font-semibold">Month</th>
+                        <th className="py-2 text-right font-semibold">Principal ({currencySymbol})</th>
+                        <th className="py-2 text-right font-semibold">Interest ({currencySymbol})</th>
+                        <th className="py-2 text-right font-semibold">Total Due ({currencySymbol})</th>
+                        <th className="py-2 text-right font-semibold">Balance ({currencySymbol})</th>
+                      </tr>
+                    </thead>
+                    <tbody className="font-medium text-gray-900">
+                      {visibleSchedule.map((row, index) => (
+                        'isEllipsis' in row ? (
+                          <tr key={`ellipsis-${index}`} className="text-gray-500">
+                            <td className="py-2 text-center">...</td>
+                            <td className="py-2 text-right">...</td>
+                            <td className="py-2 text-right">...</td>
+                            <td className="py-2 text-right">...</td>
+                            <td className="py-2 text-right">...</td>
+                          </tr>
+                        ) : (
+                          <tr key={row.month}>
+                            <td className="py-2 text-center">{row.month}</td>
+                            <td className="py-2 text-right">{row.principal.toFixed(2)}</td>
+                            <td className="py-2 text-right">{row.interest.toFixed(2)}</td>
+                            <td className="py-2 text-right">{row.totalDue.toFixed(2)}</td>
+                            <td className="py-2 text-right">{row.balance.toFixed(2)}</td>
+                          </tr>
+                        )
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-                <div>
-                  <p className="text-indigo-600">Total Interest</p>
-                  <p className="font-bold text-indigo-900">{formatCurrency(totalInterest, currency)}</p>
-                </div>
-                <div>
-                  <p className="text-indigo-600">Due Date</p>
-                  <p className="font-bold text-indigo-900">
-                    {new Date(new Date(formData.startDate).setMonth(new Date(formData.startDate).getMonth() + months)).toLocaleDateString()}
-                  </p>
+              </div>
+
+              <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-4">
+                <h4 className="mb-3 font-semibold text-indigo-800">Loan Summary</h4>
+                <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
+                  <div>
+                    <p className="text-indigo-600">Total Interest</p>
+                    <p className="font-bold text-indigo-900">{formatLoanCurrency(totalInterest, currency)}</p>
+                  </div>
+                  <div>
+                    <p className="text-indigo-600">Total Payable</p>
+                    <p className="font-bold text-indigo-900">{formatLoanCurrency(totalPayable, currency)}</p>
+                  </div>
+                  <div>
+                    <p className="text-indigo-600">Monthly Installment</p>
+                    <p className="font-bold text-indigo-900">{formatLoanCurrency(emi, currency)}</p>
+                  </div>
+                  <div>
+                    <p className="text-indigo-600">Due Date (Final)</p>
+                    <p className="font-bold text-indigo-900">
+                      {dueDate ? dueDate.toLocaleDateString() : '-'}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
